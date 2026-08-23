@@ -15,7 +15,7 @@ export class User {
     type: 'nvarchar',
     length: 150,
   })
-  name!: string;
+  username!: string;
 
   @Column({
     type: 'nvarchar',

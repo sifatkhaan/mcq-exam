@@ -13,15 +13,15 @@ export class Role {
   @Column({
     type: 'nvarchar',
     length: 100,
+    unique: true,
   })
   name!: string;
 
   @Column({
     type: 'nvarchar',
-    length: 50,
-    unique: true,
+    length: 255,
   })
-  code!: string;
+  description!: string;
 
   @Column({
     type: 'nvarchar',
