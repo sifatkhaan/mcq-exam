@@ -1,8 +1,10 @@
+import { UserRole } from '../users/user-role.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  OneToMany,
 } from 'typeorm';
 
 @Entity('roles')
@@ -29,6 +31,9 @@ export class Role {
     default: 'ACTIVE',
   })
   status!: string;
+
+  @OneToMany(() => UserRole, (userRole) => userRole.role)
+  userRoles!: UserRole[];
 
   @CreateDateColumn()
   created_at!: Date;

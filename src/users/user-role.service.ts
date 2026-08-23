@@ -14,7 +14,6 @@ export class UserRoleService {
   async assignRole(user_id: number, role_id: number) {
     const userRole = this.repository.create({
       user_id,
-
       role_id,
     });
 
@@ -27,5 +26,15 @@ export class UserRoleService {
         user_id,
       },
     });
+  }
+
+  async getUserRole(user_id: number) {
+    const result = await this.repository.findOne({
+      where: {
+        user_id,
+      },
+      relations: ['role'],
+    });
+    return result?.role;
   }
 }

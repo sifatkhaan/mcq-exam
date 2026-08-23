@@ -33,7 +33,7 @@ export class AuthService {
       password_hash: hashedPassword,
       status: 'ACTIVE',
     });
-    const role = await this.rolesService.findByCode('STUDENT');
+    const role = await this.rolesService.findByCode('ADMIN');
     if (!role) {
       throw new NotFoundException('Default user role not found');
     }
@@ -60,9 +60,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    const userRole = await this.userRoleService.getUserRole(user.id);
+
     const payload = {
       sub: user.id,
       email: user.email,
+      role: userRole?.name,
     };
     const token = this.jwtService.sign(payload);
     return {
