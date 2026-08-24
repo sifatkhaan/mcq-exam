@@ -15,9 +15,9 @@ import { JwtService } from '@nestjs/jwt';
 export class AuthService {
   constructor(
     private readonly userService: UsersService,
-    private readonly userRoleService: UserRoleService,
     private readonly rolesService: RolesService,
     private readonly jwtService: JwtService,
+    private readonly userRoleService: UserRoleService,
   ) {}
   async register(dto: RegisterDto) {
     const existingUser = await this.userService.findByEmail(dto.email);
