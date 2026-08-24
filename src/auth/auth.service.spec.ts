@@ -4,6 +4,7 @@ import { RolesService } from '../roles/roles.service';
 import { UserRoleService } from '../users/user-role.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
+import { OrganizationsService } from '../organizations/organizations.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -35,6 +36,12 @@ describe('AuthService', () => {
           provide: JwtService,
           useValue: {
             sign: jest.fn(),
+          },
+        },
+        {
+          provide: OrganizationsService,
+          useValue: {
+            getUserOrganization: jest.fn(),
           },
         },
       ],

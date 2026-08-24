@@ -10,7 +10,7 @@ import { RolesService } from '../roles/roles.service';
 import { UserRoleService } from '../users/user-role.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import { OrganizationsService } from 'src/organizations/organizations.service';
+import { OrganizationsService } from '../organizations/organizations.service';
 
 @Injectable()
 export class AuthService {

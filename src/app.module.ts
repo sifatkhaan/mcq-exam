@@ -7,6 +7,8 @@ import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
 import { AuthModule } from './auth/auth.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { SubjectsModule } from './subjects/subjects.module';
+import { ChaptersModule } from './chapters/chapters.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { OrganizationsModule } from './organizations/organizations.module';
     RolesModule,
     AuthModule,
     OrganizationsModule,
+    SubjectsModule,
+    ChaptersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
