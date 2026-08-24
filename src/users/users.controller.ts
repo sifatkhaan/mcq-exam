@@ -40,4 +40,12 @@ export class UsersController {
       message: 'Welcome Admin',
     };
   }
+
+  @Get('context')
+  @UseGuards(JwtAuthGuard)
+  context(@Req() req: AuthenticatedRequest) {
+    return {
+      user: req.user,
+    };
+  }
 }

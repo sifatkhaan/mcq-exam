@@ -10,14 +10,16 @@ import { RolesService } from '../roles/roles.service';
 import { UserRoleService } from '../users/user-role.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
+import { OrganizationsService } from 'src/organizations/organizations.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UsersService,
-    private readonly rolesService: RolesService,
     private readonly jwtService: JwtService,
+    private readonly rolesService: RolesService,
     private readonly userRoleService: UserRoleService,
+    private readonly organizationService: OrganizationsService,
   ) {}
   async register(dto: RegisterDto) {
     const existingUser = await this.userService.findByEmail(dto.email);
@@ -61,11 +63,14 @@ export class AuthService {
     }
 
     const userRole = await this.userRoleService.getUserRole(user.id);
+    const organizationMember =
+      await this.organizationService.getUserOrganization(user.id);
 
     const payload = {
       sub: user.id,
       email: user.email,
       role: userRole?.name,
+      organization_id: organizationMember?.organization_id,
     };
     const token = this.jwtService.sign(payload);
     return {

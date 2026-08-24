@@ -8,12 +8,14 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import type { SignOptions } from 'jsonwebtoken';
 import { JwtStrategy } from './jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
+import { OrganizationsModule } from 'src/organizations/organizations.module';
 
 @Module({
   imports: [
     PassportModule,
     UsersModule,
     RolesModule,
+    OrganizationsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
 

@@ -16,6 +16,7 @@ import { Roles } from '../auth/decorators/roles.decorators';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import { CreateMemberDto } from './dto/create-member.dto';
 
 type AuthenticatedRequest = Request & {
   user: {
@@ -67,5 +68,26 @@ export class OrganizationsController {
     req: AuthenticatedRequest,
   ) {
     return this.service.remove(Number(id), req.user.id);
+  }
+
+  @Post('member')
+  addMember(@Body() dto: CreateMemberDto, @Req() req: AuthenticatedRequest) {
+    return this.service.addMember(dto, req.user.id);
+  }
+
+  @Get(':id/members')
+  members(
+    @Param('id')
+    id: number,
+  ) {
+    return this.service.getMembers(Number(id));
+  }
+
+  @Delete('member/:id')
+  removeMember(
+    @Param('id')
+    id: number,
+  ) {
+    return this.service.removeMember(Number(id));
   }
 }
