@@ -8,6 +8,7 @@ import {
   UseGuards,
   Param,
   Patch,
+  Delete,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { Roles } from '../auth/decorators/roles.decorators';
@@ -39,21 +40,59 @@ export class QuestionsController {
     return this.service.create(dto, req.user.id, req.user.organization_id);
   }
 
+  // @Get()
+  // findAll(
+  //   @Req() req: AuthenticatedRequest,
+  //   @Query('subject_id')
+  //   subjectId?: string,
+  //   @Query('chapter_id')
+  //   chapterId?: string,
+  //   @Query('topic_id')
+  //   topicId?: string,
+  // ) {
+  //   return this.service.findAll(
+  //     req.user.organization_id,
+  //     subjectId ? Number(subjectId) : undefined,
+  //     chapterId ? Number(chapterId) : undefined,
+  //     topicId ? Number(topicId) : undefined,
+  //   );
+  // }
+
   @Get()
   findAll(
-    @Req() req: AuthenticatedRequest,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Query('page')
+    page?: string,
+
+    @Query('page_size')
+    pageSize?: string,
+
+    @Query('search')
+    search?: string,
+
     @Query('subject_id')
     subjectId?: string,
+
     @Query('chapter_id')
     chapterId?: string,
+
     @Query('topic_id')
     topicId?: string,
+
+    @Query('difficulty')
+    difficulty?: string,
   ) {
     return this.service.findAll(
       req.user.organization_id,
       subjectId ? Number(subjectId) : undefined,
       chapterId ? Number(chapterId) : undefined,
       topicId ? Number(topicId) : undefined,
+      page ? Number(page) : 1,
+      pageSize ? Number(pageSize) : 20,
+      search,
+      difficulty,
     );
   }
 
@@ -89,6 +128,34 @@ export class QuestionsController {
     return this.service.update(
       Number(id),
       dto,
+      req.user.id,
+      req.user.organization_id,
+    );
+  }
+
+  @Delete(':id')
+  remove(
+    @Param('id')
+    id: string,
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    return this.service.remove(
+      Number(id),
+      req.user.id,
+      req.user.organization_id,
+    );
+  }
+
+  @Patch(':id/restore')
+  restore(
+    @Param('id')
+    id: string,
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    return this.service.restore(
+      Number(id),
       req.user.id,
       req.user.organization_id,
     );

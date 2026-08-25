@@ -51,13 +51,14 @@ export class Question {
   is_deleted!: boolean;
 
   @Column({
+    type: 'int',
     nullable: true,
   })
-  deleted_by!: number;
+  deleted_by!: number | null;
 
   @Column({
     type: 'datetime2',
     nullable: true,
   })
-  deleted_at!: Date;
+  deleted_at!: Date | null;
 }

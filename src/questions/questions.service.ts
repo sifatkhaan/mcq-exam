@@ -27,10 +27,6 @@ type QuestionListRow = {
   topic_name: string;
 };
 
-type QuestionListItem = QuestionListRow & {
-  latest_version: QuestionVersion | null;
-};
-
 type QuestionDetailItem = QuestionListRow & {
   version: QuestionVersion & {
     options: QuestionOption[];
@@ -188,12 +184,24 @@ export class QuestionsService {
     subjectId?: number,
     chapterId?: number,
     topicId?: number,
+    page: number = 1,
+    pageSize: number = 10,
+    search?: string,
+    difficulty?: string,
   ) {
     const query = this.questionRepository
       .createQueryBuilder('q')
       .innerJoin(Subject, 's', 's.id = q.subject_id')
       .innerJoin(Chapter, 'c', 'c.id = q.chapter_id')
       .innerJoin(Topic, 't', 't.id = q.topic_id')
+      .innerJoin(
+        QuestionVersion,
+        'qv',
+        `
+      qv.question_id = q.id
+      AND qv.status = 'ACTIVE'
+      `,
+      )
       .where('s.organization_id = :organizationId', { organizationId })
       .andWhere('q.is_deleted = :qDeleted', { qDeleted: false })
       .andWhere('s.is_deleted = :sDeleted', { sDeleted: false })
@@ -209,8 +217,27 @@ export class QuestionsService {
     if (topicId) {
       query.andWhere('q.topic_id = :topicId', { topicId });
     }
+    if (difficulty) {
+      query.andWhere('qv.difficulty = :difficulty', { difficulty });
+    }
 
-    const questions = await query
+    if (search) {
+      query.andWhere(
+        `
+      (
+        qv.question_text LIKE :search
+        OR s.name LIKE :search
+        OR c.name LIKE :search
+        OR t.name LIKE :search
+      )
+      `,
+        {
+          search: `%${search}%`,
+        },
+      );
+    }
+    const total = await query.getCount();
+    const rows = await query
       .select([
         'q.id AS id',
         'q.subject_id AS subject_id',
@@ -222,31 +249,65 @@ export class QuestionsService {
         'c.name AS chapter_name',
         't.topic_no AS topic_no',
         't.name AS topic_name',
+        'qv.id AS version_id',
+        'qv.version_no AS version_no',
+        'qv.question_text AS question_text',
+        'qv.difficulty AS difficulty',
       ])
+
       .orderBy('q.created_at', 'DESC')
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
       .getRawMany<QuestionListRow>();
 
-    const result: QuestionListItem[] = [];
+    return {
+      data: rows,
+      pagination: {
+        page,
+        page_size: pageSize,
+        total,
+        total_pages: Math.ceil(total / pageSize),
+      },
+    };
 
-    for (const q of questions) {
-      const latestVersion = await this.versionRepository.findOne({
-        where: {
-          question_id: q.id,
-          status: 'ACTIVE',
-        },
-        order: {
-          version_no: 'DESC',
-        },
-      });
+    // const questions = await query
+    //   .select([
+    //     'q.id AS id',
+    //     'q.subject_id AS subject_id',
+    //     'q.chapter_id AS chapter_id',
+    //     'q.topic_id AS topic_id',
+    //     'q.status AS status',
+    //     's.name AS subject_name',
+    //     'c.chapter_no AS chapter_no',
+    //     'c.name AS chapter_name',
+    //     't.topic_no AS topic_no',
+    //     't.name AS topic_name',
+    //   ])
+    //   .orderBy('q.created_at', 'DESC')
+    //   .getRawMany<QuestionListRow>();
 
-      result.push({
-        ...q,
-        latest_version: latestVersion ?? null,
-      });
-    }
+    // const result: QuestionListItem[] = [];
 
-    return result;
+    // for (const q of questions) {
+    //   const latestVersion = await this.versionRepository.findOne({
+    //     where: {
+    //       question_id: q.id,
+    //       status: 'ACTIVE',
+    //     },
+    //     order: {
+    //       version_no: 'DESC',
+    //     },
+    //   });
+
+    //   result.push({
+    //     ...q,
+    //     latest_version: latestVersion ?? null,
+    //   });
+    // }
+
+    // return result;
   }
+
   async findOne(id: number, organizationId: number) {
     const question = await this.questionRepository
       .createQueryBuilder('q')
@@ -529,5 +590,43 @@ export class QuestionsService {
     }
 
     return result;
+  }
+  async remove(id: number, userId: number, organizationId: number) {
+    await this.findOne(id, organizationId);
+    await this.questionRepository.update(id, {
+      is_deleted: true,
+      deleted_by: userId,
+      deleted_at: new Date(),
+      status: 'INACTIVE',
+    });
+
+    return {
+      message: 'Question deleted successfully',
+    };
+  }
+
+  async restore(id: number, userId: number, organizationId: number) {
+    const question = await this.questionRepository
+      .createQueryBuilder('q')
+      .innerJoin(Subject, 's', 's.id = q.subject_id')
+      .where('q.id = :id', { id })
+      .andWhere('s.organization_id = :organizationId', { organizationId })
+      .getOne();
+    if (!question) {
+      throw new NotFoundException('Question not found');
+    }
+
+    await this.questionRepository.update(id, {
+      is_deleted: false,
+      deleted_by: null,
+      deleted_at: null,
+      status: 'ACTIVE',
+      updated_by: userId,
+      updated_at: new Date(),
+    });
+
+    return {
+      message: 'Question restored successfully',
+    };
   }
 }
