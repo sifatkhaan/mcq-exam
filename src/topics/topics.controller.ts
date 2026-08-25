@@ -10,10 +10,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-
-import { ChaptersService } from './chapters.service';
-import { CreateChapterDto } from './dto/create-chapter.dto';
-import { UpdateChapterDto } from './dto/update-chapter.dto';
+import type { Request } from 'express';
+import { TopicsService } from './topics.service';
+import { CreateTopicDto } from './dto/create-topic.dto';
+import { UpdateTopicDto } from './dto/update-topic.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorators';
@@ -25,45 +25,43 @@ type AuthenticatedRequest = Request & {
   };
 };
 
-@Controller('chapters')
+@Controller('topics')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'TEACHER')
-export class ChaptersController {
-  constructor(private readonly service: ChaptersService) {}
+export class TopicsController {
+  constructor(private readonly service: TopicsService) {}
 
   @Post()
-  create(@Body() dto: CreateChapterDto, @Req() req: AuthenticatedRequest) {
+  create(@Body() dto: CreateTopicDto, @Req() req: AuthenticatedRequest) {
     return this.service.create(dto, req.user.id, req.user.organization_id);
   }
 
   @Get()
   findAll(
     @Req() req: AuthenticatedRequest,
-    @Query('subject_id')
-    subjectId?: string,
+
+    @Query('chapter_id')
+    chapterId?: string,
   ) {
     return this.service.findAll(
       req.user.organization_id,
-      subjectId ? Number(subjectId) : undefined,
+
+      chapterId ? Number(chapterId) : undefined,
     );
   }
 
   @Get(':id')
-  findOne(
-    @Param('id')
-    id: string,
-    @Req()
-    req: AuthenticatedRequest,
-  ) {
+  findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.service.findOne(Number(id), req.user.organization_id);
   }
 
   @Patch(':id')
   update(
-    @Param('id')
-    id: string,
+    @Param('id') id: string,
+
     @Body()
-    dto: UpdateChapterDto,
+    dto: UpdateTopicDto,
+
     @Req()
     req: AuthenticatedRequest,
   ) {
@@ -77,8 +75,7 @@ export class ChaptersController {
 
   @Delete(':id')
   remove(
-    @Param('id')
-    id: string,
+    @Param('id') id: string,
 
     @Req()
     req: AuthenticatedRequest,
