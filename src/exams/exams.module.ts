@@ -7,15 +7,27 @@ import { ExamQuestion } from './entities/exam-question.entity';
 import { Question } from '../questions/entities/question.entity';
 import { QuestionVersion } from '../questions/entities/question-version.entity';
 import { Subject } from '../subjects/entities/subject.entity';
+import { ExamAssignment } from './entities/exam-assignment.entity';
+import { User } from 'src/users/user.entity';
+import { UserRole } from 'src/users/user-role.entity';
+import { Role } from 'src/roles/role.entity';
+import { OrganizationMember } from 'src/organizations/entities/organization-member.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       Exam,
       ExamQuestion,
+      ExamAssignment,
+
       QuestionVersion,
       Question,
       Subject,
+
+      User,
+      UserRole,
+      Role,
+      OrganizationMember,
     ]),
   ],
   controllers: [ExamsController],

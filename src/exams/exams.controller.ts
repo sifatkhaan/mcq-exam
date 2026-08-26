@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorators';
 import { AddExamQuestionDto } from './dto/add-exam-question.dto';
+import { AssignExamDto } from './dto/assign-exam.dto';
 
 type AuthenticatedRequest = Request & {
   user: {
@@ -173,6 +174,48 @@ export class ExamsController {
     return this.service.removeQuestion(
       Number(id),
       Number(examQuestionId),
+      req.user.organization_id,
+    );
+  }
+
+  @Post(':id/assignments')
+  assignStudent(
+    @Param('id')
+    id: string,
+    @Body()
+    dto: AssignExamDto,
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    return this.service.assignStudent(
+      Number(id),
+      dto,
+      req.user.id,
+      req.user.organization_id,
+    );
+  }
+  @Get(':id/assignments')
+  getAssignments(
+    @Param('id')
+    id: string,
+
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    return this.service.getAssignments(Number(id), req.user.organization_id);
+  }
+  @Patch(':id/assignments/:assignmentId/cancel')
+  cancelAssignment(
+    @Param('id')
+    id: string,
+    @Param('assignmentId')
+    assignmentId: string,
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    return this.service.cancelAssignment(
+      Number(id),
+      Number(assignmentId),
       req.user.organization_id,
     );
   }

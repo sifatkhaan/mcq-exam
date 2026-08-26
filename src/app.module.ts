@@ -12,6 +12,7 @@ import { ChaptersModule } from './chapters/chapters.module';
 import { TopicsModule } from './topics/topics.module';
 import { QuestionsModule } from './questions/questions.module';
 import { ExamsModule } from './exams/exams.module';
+import { AttemptsModule } from './attempts/attempts.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ExamsModule } from './exams/exams.module';
     TopicsModule,
     QuestionsModule,
     ExamsModule,
+    AttemptsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

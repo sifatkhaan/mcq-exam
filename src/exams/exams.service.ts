@@ -13,6 +13,12 @@ import { Question } from '../questions/entities/question.entity';
 import { QuestionVersion } from '../questions/entities/question-version.entity';
 import { Subject } from '../subjects/entities/subject.entity';
 import { AddExamQuestionDto } from './dto/add-exam-question.dto';
+import { ExamAssignment } from './entities/exam-assignment.entity';
+import { User } from 'src/users/user.entity';
+import { UserRole } from 'src/users/user-role.entity';
+import { OrganizationMember } from 'src/organizations/entities/organization-member.entity';
+import { AssignExamDto } from './dto/assign-exam.dto';
+import { Role } from 'src/roles/role.entity';
 
 type ExamRuleData = Pick<
   Partial<CreateExamDto>,
@@ -41,6 +47,17 @@ type ExamQuestionRow = {
   subject_name: string;
 };
 
+type ExamAssignmentRow = {
+  assignment_id: number;
+  exam_id: number;
+  student_id: number;
+  status: string;
+  assigned_at: Date;
+  completed_at: Date | null;
+  student_username: string;
+  student_email: string;
+};
+
 @Injectable()
 export class ExamsService {
   constructor(
@@ -54,6 +71,15 @@ export class ExamsService {
     private readonly questionRepository: Repository<Question>,
     @InjectRepository(Subject)
     private readonly subjectRepository: Repository<Subject>,
+    @InjectRepository(ExamAssignment)
+    private readonly examAssignmentRepository: Repository<ExamAssignment>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(UserRole)
+    private readonly userRoleRepository: Repository<UserRole>,
+
+    @InjectRepository(OrganizationMember)
+    private readonly organizationMemberRepository: Repository<OrganizationMember>,
   ) {}
 
   async create(dto: CreateExamDto, userId: number, organizationId: number) {
@@ -284,6 +310,7 @@ export class ExamsService {
     userId: number,
     organizationId: number,
   ) {
+    console.log(examId, 'exam id');
     const exam = await this.findOne(examId, organizationId);
 
     if (exam.status !== 'DRAFT') {
@@ -301,6 +328,7 @@ export class ExamsService {
     if (!version) {
       throw new BadRequestException('Question version not found');
     }
+
     const question = await this.questionRepository.findOne({
       where: {
         id: version.question_id,
@@ -409,6 +437,135 @@ export class ExamsService {
     await this.examQuestionRepository.delete(examQuestion.id);
     return {
       message: 'Question removed from exam successfully',
+    };
+  }
+
+  async assignStudent(
+    examId: number,
+    dto: AssignExamDto,
+    userId: number,
+    organizationId: number,
+  ) {
+    const exam = await this.findOne(examId, organizationId);
+    if (exam.status !== 'DRAFT' && exam.status !== 'PUBLISHED') {
+      throw new BadRequestException(
+        'Students can only be assigned to draft or published exams',
+      );
+    }
+
+    const student = await this.userRepository.findOne({
+      where: {
+        id: dto.student_id,
+        status: 'ACTIVE',
+      },
+    });
+
+    if (!student) {
+      throw new BadRequestException('Student not found');
+    }
+
+    const studentRole = await this.userRoleRepository
+      .createQueryBuilder('ur')
+      .innerJoin(Role, 'r', 'r.id = ur.role_id')
+      .where('ur.user_id = :studentId', {
+        studentId: dto.student_id,
+      })
+      .andWhere('r.name = :roleName', {
+        roleName: 'STUDENT',
+      })
+      .getOne();
+
+    if (!studentRole) {
+      throw new BadRequestException('Selected user is not a student');
+    }
+
+    const organizationMember = await this.organizationMemberRepository.findOne({
+      where: {
+        organization_id: organizationId,
+        user_id: dto.student_id,
+        status: 'ACTIVE',
+      },
+    });
+
+    if (!organizationMember) {
+      throw new BadRequestException(
+        'Student does not belong to your organization',
+      );
+    }
+
+    const existingAssignment = await this.examAssignmentRepository.findOne({
+      where: {
+        exam_id: examId,
+        student_id: dto.student_id,
+      },
+    });
+
+    if (existingAssignment) {
+      throw new BadRequestException('Student is already assigned to this exam');
+    }
+
+    const assignment = this.examAssignmentRepository.create({
+      exam_id: examId,
+      student_id: dto.student_id,
+      status: 'ASSIGNED',
+      assigned_by: userId,
+    });
+
+    return await this.examAssignmentRepository.save(assignment);
+  }
+
+  async getAssignments(examId: number, organizationId: number) {
+    await this.findOne(examId, organizationId);
+    return await this.examAssignmentRepository
+      .createQueryBuilder('ea')
+      .innerJoin(User, 'u', 'u.id = ea.student_id')
+      .where('ea.exam_id = :examId', {
+        examId,
+      })
+      .select([
+        'ea.id AS assignment_id',
+        'ea.exam_id AS exam_id',
+        'ea.student_id AS student_id',
+        'ea.status AS status',
+        'ea.assigned_at AS assigned_at',
+        'ea.completed_at AS completed_at',
+        'u.username AS student_username',
+        'u.email AS student_email',
+      ])
+      .orderBy('ea.assigned_at', 'DESC')
+      .getRawMany<ExamAssignmentRow>();
+  }
+
+  async cancelAssignment(
+    examId: number,
+    assignmentId: number,
+    organizationId: number,
+  ) {
+    const exam = await this.findOne(examId, organizationId);
+    if (exam.status === 'ARCHIVED') {
+      throw new BadRequestException('Archived exam cannot be modified');
+    }
+    const assignment = await this.examAssignmentRepository.findOne({
+      where: {
+        id: assignmentId,
+        exam_id: examId,
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('Exam assignment not found');
+    }
+
+    if (assignment.status === 'COMPLETED') {
+      throw new BadRequestException('Completed assignment cannot be cancelled');
+    }
+
+    await this.examAssignmentRepository.update(assignmentId, {
+      status: 'CANCELLED',
+    });
+
+    return {
+      message: 'Exam assignment cancelled successfully',
     };
   }
 }
