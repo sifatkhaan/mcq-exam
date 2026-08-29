@@ -86,4 +86,30 @@ export class AttemptReportsController {
       selectedPeriod,
     );
   }
+  @Get('exams/:examId/students')
+  getExamStudentResults(
+    @Param('examId')
+    examId: string,
+
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    return this.attemptsService.getExamStudentResults(
+      Number(examId),
+      req.user.organization_id,
+    );
+  }
+  @Get('attempts/:attemptId')
+  getStaffAttemptDetail(
+    @Param('attemptId')
+    attemptId: string,
+
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    return this.attemptsService.getStaffAttemptDetail(
+      Number(attemptId),
+      req.user.organization_id,
+    );
+  }
 }

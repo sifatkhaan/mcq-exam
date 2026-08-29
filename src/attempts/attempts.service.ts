@@ -274,6 +274,178 @@ type ExamAnalyticsResult = {
   easiest_questions: ExamQuestionPerformance[];
 };
 
+type ExamStudentAssignmentRow = {
+  assignment_id: number | string;
+  student_id: number | string;
+  assignment_status: string;
+  assigned_at: Date;
+  completed_at: Date | null;
+  student_name: string;
+  student_email: string;
+};
+
+type ExamStudentAttemptSummary = {
+  attempt_id: number;
+  attempt_no: number;
+  submission_type?: string | null;
+  submitted_at?: Date | null;
+  final_score: number;
+  percentage: number;
+  result_status: string | null;
+};
+
+type ExamStudentResultRow = {
+  assignment_id: number;
+  student_id: number;
+  name: string;
+  email: string;
+  assignment_status: string;
+  participation_status: 'PARTICIPATED' | 'NOT_ATTEMPTED' | 'CANCELLED';
+  total_attempts: number;
+  latest_attempt: ExamStudentAttemptSummary | null;
+  best_attempt: ExamStudentAttemptSummary | null;
+  final_status: 'PASS' | 'FAIL' | 'NO_DATA';
+};
+
+type ExamStudentResultsResult = {
+  exam: {
+    id: number;
+    title: string;
+    status: string;
+    total_marks: number;
+    pass_marks: number;
+    max_attempts: number;
+  };
+  summary: {
+    assigned_students: number;
+    participated_students: number;
+    non_participants: number;
+    passed_students: number;
+    failed_students: number;
+  };
+  students: ExamStudentResultRow[];
+};
+
+type StaffAttemptDetailRow = {
+  attempt_id: number | string;
+  exam_id: number | string;
+  student_id: number | string;
+  assignment_id: number | string | null;
+  attempt_no: number | string;
+  attempt_status: string;
+  started_at: Date;
+  expires_at: Date;
+  submitted_at: Date | null;
+  submission_type: string | null;
+  total_questions: number | string | null;
+  correct_count: number | string | null;
+  wrong_count: number | string | null;
+  unanswered_count: number | string | null;
+  positive_marks: number | string | null;
+  negative_marks: number | string | null;
+  final_score: number | string | null;
+  percentage: number | string | null;
+  result_status: string | null;
+  exam_title: string;
+  exam_total_marks: number | string | null;
+  exam_pass_marks: number | string | null;
+  negative_marking_enabled: boolean | number | string;
+  student_name: string;
+  student_email: string;
+};
+
+type StaffAttemptQuestionRow = {
+  exam_question_id: number | string;
+  question_order: number | string;
+  question_marks: number | string | null;
+  question_negative_marks: number | string | null;
+  question_version_id: number | string;
+  question_text: string;
+  explanation: string | null;
+  answer_id: number | string | null;
+  selected_option_id: number | string | null;
+  is_correct: boolean | number | string | null;
+  marks_awarded: number | string | null;
+  answered_at: Date | null;
+  answer_updated_at: Date | null;
+  subject_id: number | string | null;
+  subject_name: string | null;
+  chapter_id: number | string | null;
+  chapter_name: string | null;
+  topic_id: number | string | null;
+  topic_name: string | null;
+};
+
+type StaffAttemptOptionRow = {
+  option_id: number | string;
+  question_version_id: number | string;
+  option_text: string;
+  option_order: number | string;
+  is_correct: boolean | number | string;
+};
+
+type StaffAttemptOption = {
+  id: number;
+  option_text: string;
+  option_order: number;
+  is_correct: boolean;
+};
+
+type StaffAttemptQuestionDetail = {
+  exam_question_id: number;
+  question_order: number;
+  question_version_id: number;
+  question_text: string;
+  subject: { id: number; name: string | null } | null;
+  chapter: { id: number; name: string | null } | null;
+  topic: { id: number; name: string | null } | null;
+  marks: number;
+  negative_marks: number;
+  answered: boolean;
+  selected_option: StaffAttemptOption | null;
+  correct_option: StaffAttemptOption | null;
+  is_correct: boolean;
+  marks_awarded: number;
+  answered_at: Date | null;
+  explanation: string | null;
+  options: StaffAttemptOption[];
+};
+
+type StaffAttemptDetailResult = {
+  student: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  exam: {
+    id: number;
+    title: string;
+    total_marks: number;
+    pass_marks: number;
+    negative_marking_enabled: boolean;
+  };
+  attempt: {
+    id: number;
+    assignment_id: number | null;
+    attempt_no: number;
+    status: string;
+    submission_type: string | null;
+    started_at: Date;
+    expires_at: Date;
+    submitted_at: Date | null;
+    total_questions: number;
+    correct_count: number;
+    wrong_count: number;
+    unanswered_count: number;
+    positive_marks: number;
+    negative_marks: number;
+    final_score: number;
+    percentage: number;
+    result_status: string | null;
+  };
+  questions: StaffAttemptQuestionDetail[];
+};
+
 @Injectable()
 export class AttemptsService {
   constructor(
@@ -2523,6 +2695,631 @@ export class AttemptsService {
       most_difficult_questions: mostDifficultQuestions,
 
       easiest_questions: easiestQuestions,
+    };
+  }
+  async getExamStudentResults(
+    examId: number,
+    organizationId: number,
+  ): Promise<ExamStudentResultsResult> {
+    // --------------------------------
+    // Validate exam
+    // --------------------------------
+    const exam = await this.examRepository.findOne({
+      where: {
+        id: examId,
+        organization_id: organizationId,
+        is_deleted: false,
+      },
+    });
+
+    if (!exam) {
+      throw new NotFoundException('Exam not found in this organization');
+    }
+
+    // --------------------------------
+    // Load assignments + student info
+    // --------------------------------
+    const assignments = await this.examAssignmentRepository
+      .createQueryBuilder('assignment')
+
+      .innerJoin('users', 'student', 'student.id = assignment.student_id')
+
+      .where('assignment.exam_id = :examId', {
+        examId,
+      })
+
+      .andWhere(
+        `
+          assignment.status IN (:...statuses)
+        `,
+        {
+          statuses: ['ASSIGNED', 'COMPLETED', 'CANCELLED'],
+        },
+      )
+
+      .select([
+        'assignment.id AS assignment_id',
+        'assignment.student_id AS student_id',
+        'assignment.status AS assignment_status',
+        'assignment.assigned_at AS assigned_at',
+        'assignment.completed_at AS completed_at',
+
+        'student.username AS student_name',
+        'student.email AS student_email',
+      ])
+
+      .orderBy('student.username', 'ASC')
+
+      .getRawMany<ExamStudentAssignmentRow>();
+
+    if (assignments.length === 0) {
+      return {
+        exam: {
+          id: exam.id,
+          title: exam.title,
+          status: exam.status,
+          total_marks: Number(exam.total_marks),
+          pass_marks: Number(exam.pass_marks),
+          max_attempts: exam.max_attempts,
+        },
+
+        summary: {
+          assigned_students: 0,
+          participated_students: 0,
+          non_participants: 0,
+          passed_students: 0,
+          failed_students: 0,
+        },
+
+        students: [],
+      };
+    }
+
+    const studentIds = assignments.map((item) => Number(item.student_id));
+
+    // --------------------------------
+    // Load all submitted attempts
+    // for this exam
+    // --------------------------------
+    const attempts = await this.examAttemptRepository
+      .createQueryBuilder('attempt')
+
+      .where('attempt.exam_id = :examId', {
+        examId,
+      })
+
+      .andWhere('attempt.student_id IN (:...studentIds)', {
+        studentIds,
+      })
+
+      .andWhere(
+        `
+          attempt.status IN (:...statuses)
+        `,
+        {
+          statuses: ['SUBMITTED', 'AUTO_SUBMITTED'],
+        },
+      )
+
+      .orderBy('attempt.student_id', 'ASC')
+
+      .addOrderBy('attempt.attempt_no', 'ASC')
+
+      .getMany();
+
+    // --------------------------------
+    // Group attempts by student
+    // --------------------------------
+    const attemptMap = new Map<number, ExamAttempt[]>();
+
+    for (const attempt of attempts) {
+      const studentId = Number(attempt.student_id);
+
+      if (!attemptMap.has(studentId)) {
+        attemptMap.set(studentId, []);
+      }
+
+      attemptMap.get(studentId)!.push(attempt);
+    }
+
+    // --------------------------------
+    // Final student rows
+    // --------------------------------
+    const students: ExamStudentResultRow[] = assignments.map((assignment) => {
+      const studentId = Number(assignment.student_id);
+
+      const studentAttempts = attemptMap.get(studentId) ?? [];
+
+      // --------------------------------
+      // No submitted attempt
+      // --------------------------------
+      if (studentAttempts.length === 0) {
+        return {
+          assignment_id: Number(assignment.assignment_id),
+
+          student_id: studentId,
+
+          name: assignment.student_name,
+
+          email: assignment.student_email,
+
+          assignment_status: assignment.assignment_status,
+
+          participation_status:
+            assignment.assignment_status === 'CANCELLED'
+              ? 'CANCELLED'
+              : 'NOT_ATTEMPTED',
+
+          total_attempts: 0,
+
+          latest_attempt: null,
+
+          best_attempt: null,
+
+          final_status: 'NO_DATA',
+        };
+      }
+
+      // --------------------------------
+      // Latest attempt
+      // --------------------------------
+      const latestAttempt = [...studentAttempts].sort(
+        (a, b) => Number(b.attempt_no) - Number(a.attempt_no),
+      )[0];
+
+      // --------------------------------
+      // Best attempt
+      // --------------------------------
+      const bestAttempt = [...studentAttempts].sort(
+        (a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0),
+      )[0];
+
+      // --------------------------------
+      // Current final status
+      //
+      // For now we use best attempt.
+      // If any attempt passes,
+      // student is considered passed.
+      // --------------------------------
+      const hasPassed = studentAttempts.some(
+        (attempt) => attempt.pass_status === 'PASS',
+      );
+
+      return {
+        assignment_id: Number(assignment.assignment_id),
+
+        student_id: studentId,
+
+        name: assignment.student_name,
+
+        email: assignment.student_email,
+
+        assignment_status: assignment.assignment_status,
+
+        participation_status: 'PARTICIPATED',
+
+        total_attempts: studentAttempts.length,
+
+        latest_attempt: {
+          attempt_id: latestAttempt.id,
+
+          attempt_no: latestAttempt.attempt_no,
+
+          submission_type: latestAttempt.submission_type,
+
+          submitted_at: latestAttempt.submitted_at,
+
+          final_score: Number(latestAttempt.final_score ?? 0),
+
+          percentage: Number(latestAttempt.percentage ?? 0),
+
+          result_status: latestAttempt.pass_status,
+        },
+
+        best_attempt: {
+          attempt_id: bestAttempt.id,
+
+          attempt_no: bestAttempt.attempt_no,
+
+          final_score: Number(bestAttempt.final_score ?? 0),
+
+          percentage: Number(bestAttempt.percentage ?? 0),
+
+          result_status: bestAttempt.pass_status,
+        },
+
+        final_status: hasPassed ? 'PASS' : 'FAIL',
+      };
+    });
+
+    // --------------------------------
+    // Summary
+    // --------------------------------
+    const activeAssignments = students.filter(
+      (student) => student.assignment_status !== 'CANCELLED',
+    );
+
+    const participated = activeAssignments.filter(
+      (student) => student.participation_status === 'PARTICIPATED',
+    ).length;
+
+    const nonParticipants = activeAssignments.filter(
+      (student) => student.participation_status === 'NOT_ATTEMPTED',
+    ).length;
+
+    const passedStudents = activeAssignments.filter(
+      (student) => student.final_status === 'PASS',
+    ).length;
+
+    const failedStudents = activeAssignments.filter(
+      (student) => student.final_status === 'FAIL',
+    ).length;
+
+    return {
+      exam: {
+        id: exam.id,
+
+        title: exam.title,
+
+        status: exam.status,
+
+        total_marks: Number(exam.total_marks),
+
+        pass_marks: Number(exam.pass_marks),
+
+        max_attempts: exam.max_attempts,
+      },
+
+      summary: {
+        assigned_students: activeAssignments.length,
+
+        participated_students: participated,
+
+        non_participants: nonParticipants,
+
+        passed_students: passedStudents,
+
+        failed_students: failedStudents,
+      },
+
+      students,
+    };
+  }
+  async getStaffAttemptDetail(
+    attemptId: number,
+    organizationId: number,
+  ): Promise<StaffAttemptDetailResult> {
+    // --------------------------------
+    // Load attempt
+    // --------------------------------
+    const attempt = await this.examAttemptRepository
+      .createQueryBuilder('attempt')
+      .innerJoin('exams', 'exam', 'exam.id = attempt.exam_id')
+      .innerJoin('users', 'student', 'student.id = attempt.student_id')
+      .where('attempt.id = :attemptId', {
+        attemptId,
+      })
+
+      .andWhere('exam.organization_id = :organizationId', {
+        organizationId,
+      })
+
+      .andWhere(
+        `
+          attempt.status IN (:...statuses)
+        `,
+        {
+          statuses: ['SUBMITTED', 'AUTO_SUBMITTED'],
+        },
+      )
+
+      .select([
+        'attempt.id AS attempt_id',
+        'attempt.exam_id AS exam_id',
+        'attempt.student_id AS student_id',
+        'attempt.assignment_id AS assignment_id',
+        'attempt.attempt_no AS attempt_no',
+        'attempt.status AS attempt_status',
+        'attempt.started_at AS started_at',
+        'attempt.expires_at AS expires_at',
+        'attempt.submitted_at AS submitted_at',
+        'attempt.submission_type AS submission_type',
+
+        'attempt.total_questions AS total_questions',
+        'attempt.correct_count AS correct_count',
+        'attempt.wrong_count AS wrong_count',
+        'attempt.unanswered_count AS unanswered_count',
+
+        'attempt.positive_marks AS positive_marks',
+        'attempt.negative_marks AS negative_marks',
+        'attempt.final_score AS final_score',
+        'attempt.percentage AS percentage',
+        'attempt.pass_status AS result_status',
+
+        'exam.title AS exam_title',
+        'exam.total_marks AS exam_total_marks',
+        'exam.pass_marks AS exam_pass_marks',
+        'exam.negative_marking_enabled AS negative_marking_enabled',
+
+        'student.username AS student_name',
+        'student.email AS student_email',
+      ])
+
+      .getRawOne<StaffAttemptDetailRow>();
+
+    if (!attempt) {
+      throw new NotFoundException(
+        'Submitted attempt not found in this organization',
+      );
+    }
+
+    // --------------------------------
+    // Load all exam questions
+    //
+    // exam_questions is the base.
+    // attempt_answers is LEFT JOINED
+    // because unanswered questions may
+    // have no answer row.
+    // --------------------------------
+    const rows = await this.examQuestionRepository
+      .createQueryBuilder('eq')
+      .innerJoin('question_versions', 'qv', 'qv.id = eq.question_version_id')
+      .innerJoin('questions', 'q', 'q.id = qv.question_id')
+      .leftJoin(
+        'attempt_answers',
+        'answer',
+        `
+          answer.exam_question_id = eq.id
+          AND answer.attempt_id = :attemptId
+        `,
+        {
+          attemptId,
+        },
+      )
+      .leftJoin('subjects', 'subject', 'subject.id = q.subject_id')
+      .leftJoin('chapters', 'chapter', 'chapter.id = q.chapter_id')
+      .leftJoin('topics', 'topic', 'topic.id = q.topic_id')
+      .where('eq.exam_id = :examId', {
+        examId: Number(attempt.exam_id),
+      })
+      .select([
+        'eq.id AS exam_question_id',
+        'eq.question_order AS question_order',
+        'eq.marks AS question_marks',
+        'eq.negative_marks AS question_negative_marks',
+
+        'qv.id AS question_version_id',
+        'qv.question_text AS question_text',
+        'qv.explanation AS explanation',
+
+        'answer.id AS answer_id',
+        'answer.selected_option_id AS selected_option_id',
+        'answer.is_correct AS is_correct',
+        'answer.marks_awarded AS marks_awarded',
+        'answer.answered_at AS answered_at',
+        'answer.updated_at AS answer_updated_at',
+
+        'subject.id AS subject_id',
+        'subject.name AS subject_name',
+
+        'chapter.id AS chapter_id',
+        'chapter.name AS chapter_name',
+
+        'topic.id AS topic_id',
+        'topic.name AS topic_name',
+      ])
+      .orderBy('eq.question_order', 'ASC')
+      .getRawMany<StaffAttemptQuestionRow>();
+    // --------------------------------
+    // Load options for every question
+    // --------------------------------
+    const questionVersionIds = rows.map((row) =>
+      Number(row.question_version_id),
+    );
+
+    let optionRows: StaffAttemptOptionRow[] = [];
+
+    if (questionVersionIds.length > 0) {
+      optionRows = await this.questionOptionRepository
+        .createQueryBuilder('qo')
+        .where(
+          `
+            qo.question_version_id
+            IN (:...questionVersionIds)
+          `,
+          {
+            questionVersionIds,
+          },
+        )
+
+        .select([
+          'qo.id AS option_id',
+          'qo.question_version_id AS question_version_id',
+          'qo.option_text AS option_text',
+          'qo.option_order AS option_order',
+          'qo.is_correct AS is_correct',
+        ])
+        .orderBy('qo.question_version_id', 'ASC')
+        .addOrderBy('qo.option_order', 'ASC')
+        .getRawMany<StaffAttemptOptionRow>();
+    }
+
+    // --------------------------------
+    // Group options by version
+    // --------------------------------
+    const optionMap = new Map<number, StaffAttemptOption[]>();
+
+    for (const option of optionRows) {
+      const questionVersionId = Number(option.question_version_id);
+
+      if (!optionMap.has(questionVersionId)) {
+        optionMap.set(questionVersionId, []);
+      }
+
+      optionMap.get(questionVersionId)!.push({
+        id: Number(option.option_id),
+
+        option_text: option.option_text,
+
+        option_order: Number(option.option_order),
+
+        is_correct:
+          option.is_correct === true ||
+          option.is_correct === 1 ||
+          option.is_correct === '1',
+      });
+    }
+
+    // --------------------------------
+    // Build question detail
+    // --------------------------------
+    const questions: StaffAttemptQuestionDetail[] = rows.map((row) => {
+      const questionVersionId = Number(row.question_version_id);
+
+      const options = optionMap.get(questionVersionId) ?? [];
+
+      const selectedOptionId =
+        row.selected_option_id === null || row.selected_option_id === undefined
+          ? null
+          : Number(row.selected_option_id);
+
+      const selectedOption =
+        selectedOptionId === null
+          ? null
+          : (options.find((option) => Number(option.id) === selectedOptionId) ??
+            null);
+
+      const correctOption =
+        options.find((option) => option.is_correct === true) ?? null;
+
+      const isAnswered = selectedOptionId !== null;
+
+      const isCorrect =
+        row.is_correct === true ||
+        row.is_correct === 1 ||
+        row.is_correct === '1';
+
+      return {
+        exam_question_id: Number(row.exam_question_id),
+
+        question_order: Number(row.question_order),
+
+        question_version_id: questionVersionId,
+
+        question_text: row.question_text,
+
+        subject: row.subject_id
+          ? {
+              id: Number(row.subject_id),
+
+              name: row.subject_name,
+            }
+          : null,
+
+        chapter: row.chapter_id
+          ? {
+              id: Number(row.chapter_id),
+
+              name: row.chapter_name,
+            }
+          : null,
+
+        topic: row.topic_id
+          ? {
+              id: Number(row.topic_id),
+
+              name: row.topic_name,
+            }
+          : null,
+
+        marks: Number(row.question_marks ?? 0),
+
+        negative_marks: Number(row.question_negative_marks ?? 0),
+
+        answered: isAnswered,
+
+        selected_option: selectedOption,
+
+        correct_option: correctOption,
+
+        is_correct: isAnswered ? isCorrect : false,
+
+        marks_awarded: Number(row.marks_awarded ?? 0),
+
+        answered_at: row.answered_at ?? null,
+
+        explanation: row.explanation ?? null,
+
+        options,
+      };
+    });
+
+    // --------------------------------
+    // Final response
+    // --------------------------------
+    return {
+      student: {
+        id: Number(attempt.student_id),
+
+        name: attempt.student_name,
+
+        email: attempt.student_email,
+      },
+
+      exam: {
+        id: Number(attempt.exam_id),
+
+        title: attempt.exam_title,
+
+        total_marks: Number(attempt.exam_total_marks ?? 0),
+
+        pass_marks: Number(attempt.exam_pass_marks ?? 0),
+
+        negative_marking_enabled:
+          attempt.negative_marking_enabled === true ||
+          attempt.negative_marking_enabled === 1 ||
+          attempt.negative_marking_enabled === '1',
+      },
+
+      attempt: {
+        id: Number(attempt.attempt_id),
+
+        assignment_id: attempt.assignment_id
+          ? Number(attempt.assignment_id)
+          : null,
+
+        attempt_no: Number(attempt.attempt_no),
+
+        status: attempt.attempt_status,
+
+        submission_type: attempt.submission_type,
+
+        started_at: attempt.started_at,
+
+        expires_at: attempt.expires_at,
+
+        submitted_at: attempt.submitted_at,
+
+        total_questions: Number(attempt.total_questions ?? 0),
+
+        correct_count: Number(attempt.correct_count ?? 0),
+
+        wrong_count: Number(attempt.wrong_count ?? 0),
+
+        unanswered_count: Number(attempt.unanswered_count ?? 0),
+
+        positive_marks: Number(attempt.positive_marks ?? 0),
+
+        negative_marks: Number(attempt.negative_marks ?? 0),
+
+        final_score: Number(attempt.final_score ?? 0),
+
+        percentage: Number(attempt.percentage ?? 0),
+
+        result_status: attempt.result_status,
+      },
+
+      questions,
     };
   }
 }
