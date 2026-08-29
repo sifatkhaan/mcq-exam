@@ -12,15 +12,16 @@ export class AttemptAnswer {
   exam_question_id!: number;
 
   @Column({
+    type: 'int',
     nullable: true,
   })
-  selected_option_id!: number;
+  selected_option_id!: number | null;
 
   @Column({
     type: 'bit',
     nullable: true,
   })
-  is_correct!: boolean;
+  is_correct!: boolean | null;
 
   @Column({
     type: 'decimal',
@@ -28,17 +29,15 @@ export class AttemptAnswer {
     scale: 2,
     nullable: true,
   })
-  marks_awarded!: number;
-
+  marks_awarded!: number | null;
   @Column({
     type: 'datetime2',
     nullable: true,
   })
-  answered_at!: Date;
-
+  answered_at!: Date | null;
   @Column({
     type: 'datetime2',
     nullable: true,
   })
-  updated_at!: Date;
+  updated_at!: Date | null;
 }

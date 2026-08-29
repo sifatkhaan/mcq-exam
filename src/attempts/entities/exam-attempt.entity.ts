@@ -17,9 +17,10 @@ export class ExamAttempt {
   student_id!: number;
 
   @Column({
+    type: 'int',
     nullable: true,
   })
-  assignment_id!: number;
+  assignment_id!: number | null;
 
   @Column({
     type: 'int',
@@ -45,38 +46,38 @@ export class ExamAttempt {
     type: 'datetime2',
     nullable: true,
   })
-  submitted_at!: Date;
+  submitted_at!: Date | null;
 
   @Column({
     type: 'nvarchar',
     length: 30,
     nullable: true,
   })
-  submission_type!: string;
+  submission_type!: string | null;
 
   @Column({
     type: 'int',
     nullable: true,
   })
-  total_questions!: number;
+  total_questions!: number | null;
 
   @Column({
     type: 'int',
     nullable: true,
   })
-  correct_count!: number;
+  correct_count!: number | null;
 
   @Column({
     type: 'int',
     nullable: true,
   })
-  wrong_count!: number;
+  wrong_count!: number | null;
 
   @Column({
     type: 'int',
     nullable: true,
   })
-  unanswered_count!: number;
+  unanswered_count!: number | null;
 
   @Column({
     type: 'decimal',
@@ -84,7 +85,7 @@ export class ExamAttempt {
     scale: 2,
     nullable: true,
   })
-  positive_marks!: number;
+  positive_marks!: number | null;
 
   @Column({
     type: 'decimal',
@@ -92,7 +93,7 @@ export class ExamAttempt {
     scale: 2,
     nullable: true,
   })
-  negative_marks!: number;
+  negative_marks!: number | null;
 
   @Column({
     type: 'decimal',
@@ -100,7 +101,7 @@ export class ExamAttempt {
     scale: 2,
     nullable: true,
   })
-  final_score!: number;
+  final_score!: number | null;
 
   @Column({
     type: 'decimal',
@@ -108,14 +109,14 @@ export class ExamAttempt {
     scale: 2,
     nullable: true,
   })
-  percentage!: number;
+  percentage!: number | null;
 
   @Column({
     type: 'nvarchar',
     length: 20,
     nullable: true,
   })
-  pass_status!: string;
+  pass_status!: string | null;
 
   @CreateDateColumn()
   created_at!: Date;
