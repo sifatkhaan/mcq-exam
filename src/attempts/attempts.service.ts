@@ -1139,8 +1139,6 @@ export class AttemptsService {
       );
     }
 
-    console.log(attempt, 'attempt');
-
     const exam = await this.examRepository.findOne({
       where: {
         id: attempt.exam_id,
@@ -1697,7 +1695,6 @@ export class AttemptsService {
       period,
     );
 
-    console.log(general, 'genaral');
     const totalAttempts = Number(general.summary?.total_exams ?? 0);
 
     // --------------------------------
@@ -3320,6 +3317,61 @@ export class AttemptsService {
       },
 
       questions,
+    };
+  }
+  async processExpiredAttempts() {
+    const now = new Date();
+
+    // --------------------------------
+    // Find expired STARTED attempts
+    // --------------------------------
+    const expiredAttempts = await this.examAttemptRepository
+      .createQueryBuilder('attempt')
+      .where('attempt.status = :status', {
+        status: 'STARTED',
+      })
+      .andWhere('attempt.expires_at <= :now', {
+        now,
+      })
+      .orderBy('attempt.expires_at', 'ASC')
+      .getMany();
+
+    if (expiredAttempts.length === 0) {
+      return {
+        processed: 0,
+        failed: 0,
+      };
+    }
+
+    let processed = 0;
+    let failed = 0;
+
+    // --------------------------------
+    // Finalize each expired attempt
+    // --------------------------------
+    for (const attempt of expiredAttempts) {
+      try {
+        await this.submitAttempt(
+          Number(attempt.id),
+          Number(attempt.student_id),
+          'TIME_EXPIRED',
+        );
+
+        processed++;
+      } catch (error) {
+        failed++;
+        // Do not throw here.
+        //
+        // One broken attempt should not
+        // stop all remaining attempts
+        // from being processed.
+        console.error(`Failed to auto-submit attempt ${attempt.id}`, error);
+      }
+    }
+
+    return {
+      processed,
+      failed,
     };
   }
 }

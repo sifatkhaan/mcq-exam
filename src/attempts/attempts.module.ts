@@ -11,6 +11,7 @@ import { QuestionVersion } from 'src/questions/entities/question-version.entity'
 import { QuestionOption } from 'src/questions/entities/question-option.entity';
 import { User } from 'src/users/user.entity';
 import { AttemptReportsController } from './attempt-reports.controller';
+import { AttemptsExpiryScheduler } from './attempts-expiry.scheduler';
 
 @Module({
   imports: [
@@ -26,6 +27,6 @@ import { AttemptReportsController } from './attempt-reports.controller';
     ]),
   ],
   controllers: [AttemptsController, AttemptReportsController],
-  providers: [AttemptsService],
+  providers: [AttemptsService, AttemptsExpiryScheduler],
 })
 export class AttemptsModule {}

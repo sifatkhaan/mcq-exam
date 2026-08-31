@@ -40,24 +40,6 @@ export class QuestionsController {
     return this.service.create(dto, req.user.id, req.user.organization_id);
   }
 
-  // @Get()
-  // findAll(
-  //   @Req() req: AuthenticatedRequest,
-  //   @Query('subject_id')
-  //   subjectId?: string,
-  //   @Query('chapter_id')
-  //   chapterId?: string,
-  //   @Query('topic_id')
-  //   topicId?: string,
-  // ) {
-  //   return this.service.findAll(
-  //     req.user.organization_id,
-  //     subjectId ? Number(subjectId) : undefined,
-  //     chapterId ? Number(chapterId) : undefined,
-  //     topicId ? Number(topicId) : undefined,
-  //   );
-  // }
-
   @Get()
   findAll(
     @Req()
