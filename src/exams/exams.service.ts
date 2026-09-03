@@ -46,7 +46,6 @@ type ExamQuestionRow = {
   difficulty: string;
   subject_name: string;
 };
-
 type ExamAssignmentRow = {
   assignment_id: number;
   exam_id: number;
@@ -57,7 +56,6 @@ type ExamAssignmentRow = {
   student_username: string;
   student_email: string;
 };
-
 @Injectable()
 export class ExamsService {
   constructor(
@@ -81,7 +79,6 @@ export class ExamsService {
     @InjectRepository(OrganizationMember)
     private readonly organizationMemberRepository: Repository<OrganizationMember>,
   ) {}
-
   async create(dto: CreateExamDto, userId: number, organizationId: number) {
     this.validateExamRules(dto);
 
@@ -96,7 +93,6 @@ export class ExamsService {
 
     return await this.examRepository.save(exam);
   }
-
   async findAll(organizationId: number, status?: string) {
     const query = this.examRepository
       .createQueryBuilder('exam')
@@ -109,7 +105,6 @@ export class ExamsService {
 
     return await query.orderBy('exam.created_at', 'DESC').getMany();
   }
-
   async findOne(id: number, organizationId: number) {
     const exam = await this.examRepository.findOne({
       where: {
@@ -125,7 +120,6 @@ export class ExamsService {
 
     return exam;
   }
-
   async update(
     id: number,
     dto: UpdateExamDto,
@@ -156,7 +150,6 @@ export class ExamsService {
 
     return this.findOne(id, organizationId);
   }
-
   async remove(id: number, userId: number, organizationId: number) {
     const exam = await this.findOne(id, organizationId);
     if (exam.status === 'PUBLISHED') {
@@ -175,7 +168,6 @@ export class ExamsService {
       message: 'Exam deleted successfully',
     };
   }
-
   async publish(id: number, userId: number, organizationId: number) {
     const exam = await this.findOne(id, organizationId);
 
@@ -229,7 +221,6 @@ export class ExamsService {
       },
     };
   }
-
   async close(id: number, userId: number, organizationId: number) {
     const exam = await this.findOne(id, organizationId);
 
@@ -247,7 +238,28 @@ export class ExamsService {
       message: 'Exam closed successfully',
     };
   }
+  async closeExpiredExams() {
+    const now = new Date();
+    const result = await this.examRepository
+      .createQueryBuilder()
+      .update()
+      .set({
+        status: 'CLOSED',
+        updated_at: now,
+      })
+      .where('status = :status', {
+        status: 'PUBLISHED',
+      })
+      .andWhere('end_at IS NOT NULL')
+      .andWhere('end_at <= :now', {
+        now,
+      })
+      .execute();
 
+    return {
+      closed_exams: result.affected ?? 0,
+    };
+  }
   async archive(id: number, userId: number, organizationId: number) {
     const exam = await this.findOne(id, organizationId);
     if (exam.status === 'PUBLISHED') {
@@ -264,7 +276,6 @@ export class ExamsService {
       message: 'Exam archived successfully',
     };
   }
-
   private validateExamRules(data: ExamRuleData) {
     if (
       data.total_marks !== undefined &&
@@ -273,27 +284,22 @@ export class ExamsService {
     ) {
       throw new BadRequestException('Pass marks cannot exceed total marks');
     }
-
     if (data.start_at && data.end_at) {
       const start = new Date(data.start_at);
       const end = new Date(data.end_at);
-
       if (end <= start) {
         throw new BadRequestException('End time must be after start time');
       }
     }
-
     if (
       data.duration_minutes !== undefined &&
       Number(data.duration_minutes) <= 0
     ) {
       throw new BadRequestException('Duration must be greater than 0');
     }
-
     if (data.max_attempts !== undefined && Number(data.max_attempts) < 1) {
       throw new BadRequestException('Maximum attempts must be at least 1');
     }
-
     if (
       data.negative_marking_enabled === true &&
       Number(data.default_negative_mark ?? 0) <= 0
@@ -303,7 +309,6 @@ export class ExamsService {
       );
     }
   }
-
   async addQuestion(
     examId: number,
     dto: AddExamQuestionDto,
@@ -439,7 +444,6 @@ export class ExamsService {
       message: 'Question removed from exam successfully',
     };
   }
-
   async assignStudent(
     examId: number,
     dto: AssignExamDto,
@@ -513,7 +517,6 @@ export class ExamsService {
 
     return await this.examAssignmentRepository.save(assignment);
   }
-
   async getAssignments(examId: number, organizationId: number) {
     await this.findOne(examId, organizationId);
     return await this.examAssignmentRepository
@@ -535,7 +538,6 @@ export class ExamsService {
       .orderBy('ea.assigned_at', 'DESC')
       .getRawMany<ExamAssignmentRow>();
   }
-
   async cancelAssignment(
     examId: number,
     assignmentId: number,

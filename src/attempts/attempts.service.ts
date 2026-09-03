@@ -483,6 +483,26 @@ export class AttemptsService {
       .andWhere('exam.is_deleted = :isDeleted', { isDeleted: false })
       .andWhere('(exam.start_at IS NULL OR exam.start_at <= :now)', { now })
       .andWhere('(exam.end_at IS NULL OR exam.end_at >= :now)', { now })
+      .andWhere(
+        `(
+    exam.start_at IS NULL
+    OR exam.start_at <= :now
+  )`,
+        {
+          now: new Date(),
+        },
+      )
+      .andWhere(
+        `
+  (
+    exam.end_at IS NULL
+    OR exam.end_at >= :now
+  )
+  `,
+        {
+          now: new Date(),
+        },
+      )
       .select([
         'exam.id AS exam_id',
         'exam.title AS title',
@@ -499,7 +519,6 @@ export class AttemptsService {
       .orderBy('exam.start_at', 'ASC')
       .getRawMany<AvailableExamRows>();
   }
-
   async startExam(examId: number, studentId: number, organizationId: number) {
     const exam = await this.examRepository.findOne({
       where: {
@@ -627,7 +646,6 @@ export class AttemptsService {
       },
     };
   }
-
   async getAttemptQuestions(attemptId: number, studentId: number) {
     const attempt = await this.examAttemptRepository.findOne({
       where: {
@@ -725,7 +743,6 @@ export class AttemptsService {
       questions: result,
     };
   }
-
   async saveAnswer(
     attemptId: number,
     examQuestionId: number,
@@ -854,7 +871,6 @@ export class AttemptsService {
       },
     };
   }
-
   async submitAttempt(
     attemptId: number,
     studentId: number,
@@ -1257,7 +1273,6 @@ export class AttemptsService {
       questions: review,
     };
   }
-
   async getAttemptHistory(
     studentId: number,
     organizationId: number,
@@ -1316,7 +1331,6 @@ export class AttemptsService {
       pass_status: attempt.pass_status,
     }));
   }
-
   async getStudentAnalytics(
     studentId: number,
     organizationId: number,
@@ -1429,7 +1443,6 @@ export class AttemptsService {
       })),
     };
   }
-
   async getAcademicAnalytics(
     studentId: number,
     organizationId: number,
@@ -1674,7 +1687,6 @@ export class AttemptsService {
       topics,
     };
   }
-
   async getAssessmentReport(
     studentId: number,
     organizationId: number,
@@ -1821,7 +1833,6 @@ export class AttemptsService {
       recommendations,
     };
   }
-
   async getStudentAssessmentForStaff(
     studentId: number,
     organizationId: number,
@@ -2289,7 +2300,6 @@ export class AttemptsService {
       no_participation: noParticipation,
     };
   }
-
   async getExamAnalytics(
     examId: number,
     organizationId: number,

@@ -12,6 +12,7 @@ import { User } from 'src/users/user.entity';
 import { UserRole } from 'src/users/user-role.entity';
 import { Role } from 'src/roles/role.entity';
 import { OrganizationMember } from 'src/organizations/entities/organization-member.entity';
+import { ExamsLifecycleScheduler } from './exams-lifecycle.scheduler';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { OrganizationMember } from 'src/organizations/entities/organization-memb
     ]),
   ],
   controllers: [ExamsController],
-  providers: [ExamsService],
+  providers: [ExamsService, ExamsLifecycleScheduler],
   exports: [ExamsService],
 })
 export class ExamsModule {}
