@@ -35,7 +35,7 @@ export class AuthService {
       password_hash: hashedPassword,
       status: 'ACTIVE',
     });
-    const role = await this.rolesService.findByCode('ADMIN');
+    const role = await this.rolesService.findByCode('STUDENT');
     if (!role) {
       throw new NotFoundException('Default user role not found');
     }

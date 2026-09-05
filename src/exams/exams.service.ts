@@ -19,6 +19,7 @@ import { UserRole } from 'src/users/user-role.entity';
 import { OrganizationMember } from 'src/organizations/entities/organization-member.entity';
 import { AssignExamDto } from './dto/assign-exam.dto';
 import { Role } from 'src/roles/role.entity';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 type ExamRuleData = Pick<
   Partial<CreateExamDto>,
@@ -75,9 +76,9 @@ export class ExamsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserRole)
     private readonly userRoleRepository: Repository<UserRole>,
-
     @InjectRepository(OrganizationMember)
     private readonly organizationMemberRepository: Repository<OrganizationMember>,
+    private readonly notificationsService: NotificationsService,
   ) {}
   async create(dto: CreateExamDto, userId: number, organizationId: number) {
     this.validateExamRules(dto);
@@ -515,7 +516,21 @@ export class ExamsService {
       assigned_by: userId,
     });
 
-    return await this.examAssignmentRepository.save(assignment);
+    const savedAssignment =
+      await this.examAssignmentRepository.save(assignment);
+
+    await this.notificationsService.create(
+      dto.student_id,
+      organizationId,
+      'EXAM_ASSIGNED',
+      'New Exam Assigned',
+      `You have been assigned to the exam "${exam.title}".`,
+      'IN_APP',
+      'EXAM',
+      examId,
+    );
+
+    return savedAssignment;
   }
   async getAssignments(examId: number, organizationId: number) {
     await this.findOne(examId, organizationId);

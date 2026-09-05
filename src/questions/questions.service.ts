@@ -269,45 +269,7 @@ export class QuestionsService {
         total_pages: Math.ceil(total / pageSize),
       },
     };
-
-    // const questions = await query
-    //   .select([
-    //     'q.id AS id',
-    //     'q.subject_id AS subject_id',
-    //     'q.chapter_id AS chapter_id',
-    //     'q.topic_id AS topic_id',
-    //     'q.status AS status',
-    //     's.name AS subject_name',
-    //     'c.chapter_no AS chapter_no',
-    //     'c.name AS chapter_name',
-    //     't.topic_no AS topic_no',
-    //     't.name AS topic_name',
-    //   ])
-    //   .orderBy('q.created_at', 'DESC')
-    //   .getRawMany<QuestionListRow>();
-
-    // const result: QuestionListItem[] = [];
-
-    // for (const q of questions) {
-    //   const latestVersion = await this.versionRepository.findOne({
-    //     where: {
-    //       question_id: q.id,
-    //       status: 'ACTIVE',
-    //     },
-    //     order: {
-    //       version_no: 'DESC',
-    //     },
-    //   });
-
-    //   result.push({
-    //     ...q,
-    //     latest_version: latestVersion ?? null,
-    //   });
-    // }
-
-    // return result;
   }
-
   async findOne(id: number, organizationId: number) {
     const question = await this.questionRepository
       .createQueryBuilder('q')
@@ -604,7 +566,6 @@ export class QuestionsService {
       message: 'Question deleted successfully',
     };
   }
-
   async restore(id: number, userId: number, organizationId: number) {
     const question = await this.questionRepository
       .createQueryBuilder('q')

@@ -8,6 +8,8 @@ import { QuestionOption } from './entities/question-option.entity';
 import { Chapter } from '../chapters/entities/chapter.entity';
 import { Subject } from '../subjects/entities/subject.entity';
 import { Topic } from '../topics/entities/topic.entity';
+import { MulterModule } from '@nestjs/platform-express';
+import { QuestionImportService } from './question-import.service';
 
 @Module({
   imports: [
@@ -19,9 +21,10 @@ import { Topic } from '../topics/entities/topic.entity';
       Chapter,
       Topic,
     ]),
+    MulterModule.register({}),
   ],
   controllers: [QuestionsController],
-  providers: [QuestionsService],
+  providers: [QuestionsService, QuestionImportService],
   exports: [QuestionsService],
 })
 export class QuestionsModule {}

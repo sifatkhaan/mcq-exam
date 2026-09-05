@@ -14,6 +14,8 @@ import { QuestionsModule } from './questions/questions.module';
 import { ExamsModule } from './exams/exams.module';
 import { AttemptsModule } from './attempts/attempts.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { NotificationsModule } from './notifications/notifications.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { ScheduleModule } from '@nestjs/schedule';
     QuestionsModule,
     ExamsModule,
     AttemptsModule,
+    NotificationsModule,
+    FilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

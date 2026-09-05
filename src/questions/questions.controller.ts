@@ -1,22 +1,27 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Delete,
   Post,
   Get,
+  Param,
   Query,
   Req,
-  UseGuards,
-  Param,
   Patch,
-  Delete,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { Roles } from '../auth/decorators/roles.decorators';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { QuestionsService } from './questions.service';
+import { QuestionImportService } from './question-import.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 type AuthenticatedRequest = Request & {
   user: {
@@ -29,7 +34,10 @@ type AuthenticatedRequest = Request & {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'TEACHER')
 export class QuestionsController {
-  constructor(private readonly service: QuestionsService) {}
+  constructor(
+    private readonly service: QuestionsService,
+    private readonly questionImportService: QuestionImportService,
+  ) {}
   @Post()
   create(
     @Body()
@@ -138,6 +146,25 @@ export class QuestionsController {
   ) {
     return this.service.restore(
       Number(id),
+      req.user.id,
+      req.user.organization_id,
+    );
+  }
+
+  @Post('import')
+  @UseInterceptors(FileInterceptor('file'))
+  importQuestions(
+    @UploadedFile()
+    file: Express.Multer.File | undefined,
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Import file is required');
+    }
+
+    return this.questionImportService.importExcel(
+      file,
       req.user.id,
       req.user.organization_id,
     );

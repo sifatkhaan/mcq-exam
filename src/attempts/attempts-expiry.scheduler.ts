@@ -6,10 +6,6 @@ import { AttemptsService } from './attempts.service';
 export class AttemptsExpiryScheduler {
   private readonly logger = new Logger(AttemptsExpiryScheduler.name);
   constructor(private readonly attemptsService: AttemptsService) {}
-
-  // --------------------------------
-  // Runs every minute
-  // --------------------------------
   @Cron(CronExpression.EVERY_MINUTE)
   async handleExpiredAttempts() {
     try {
