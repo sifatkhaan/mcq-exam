@@ -16,6 +16,7 @@ import { AttemptsModule } from './attempts/attempts.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationsModule } from './notifications/notifications.module';
 import { FilesModule } from './files/files.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { FilesModule } from './files/files.module';
     AttemptsModule,
     NotificationsModule,
     FilesModule,
+    AuditLogsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
