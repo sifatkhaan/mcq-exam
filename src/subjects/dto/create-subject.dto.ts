@@ -1,8 +1,9 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateSubjectDto {
-  @IsNumber()
-  organization_id!: number;
+  @IsOptional()
+  @IsInt()
+  organization_id?: number;
 
   @IsNotEmpty()
   @IsString()

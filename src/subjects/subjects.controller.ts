@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -6,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -21,12 +23,13 @@ type AuthenticatedRequest = Request & {
   user: {
     id: number;
     organization_id: number;
+    role: string[];
   };
 };
 
 @Controller('subjects')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'TEACHER')
+@Roles('SUPER_ADMIN', 'ADMIN', 'TEACHER')
 export class SubjectsController {
   constructor(private readonly service: SubjectsService) {}
 
@@ -37,14 +40,29 @@ export class SubjectsController {
     @Req()
     req: AuthenticatedRequest,
   ) {
-    return this.service.create(dto, req.user.id);
+    return this.service.create(
+      dto,
+      req.user.id,
+      req.user.organization_id,
+      req.user.role,
+    );
   }
 
   @Get()
   findAll(
     @Req()
     req: AuthenticatedRequest,
+    @Query('organization_id')
+    organizationId?: string,
   ) {
+    const isSuperAdmin = req.user.role?.includes('SUPER_ADMIN') ?? false;
+    if (isSuperAdmin) {
+      if (!organizationId) {
+        throw new BadRequestException('Organization is required');
+      }
+
+      return this.service.findAll(Number(organizationId));
+    }
     return this.service.findAll(req.user.organization_id);
   }
 

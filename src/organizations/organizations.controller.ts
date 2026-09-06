@@ -26,7 +26,7 @@ type AuthenticatedRequest = Request & {
 
 @Controller('organizations')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
+@Roles('SUPER_ADMIN', 'ADMIN')
 export class OrganizationsController {
   constructor(private readonly service: OrganizationsService) {}
   @Post()
