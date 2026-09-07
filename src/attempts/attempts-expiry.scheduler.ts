@@ -5,9 +5,19 @@ import { AttemptsService } from './attempts.service';
 @Injectable()
 export class AttemptsExpiryScheduler {
   private readonly logger = new Logger(AttemptsExpiryScheduler.name);
+  private isProcessing = false;
+
   constructor(private readonly attemptsService: AttemptsService) {}
+
   @Cron(CronExpression.EVERY_MINUTE)
   async handleExpiredAttempts() {
+    if (this.isProcessing) {
+      this.logger.warn(
+        'Skipped expired attempts run because previous run is still active',
+      );
+      return;
+    }
+    this.isProcessing = true;
     try {
       const result = await this.attemptsService.processExpiredAttempts();
 
@@ -18,6 +28,8 @@ export class AttemptsExpiryScheduler {
       }
     } catch (error) {
       this.logger.error('Failed to process expired attempts', error);
+    } finally {
+      this.isProcessing = false;
     }
   }
 }

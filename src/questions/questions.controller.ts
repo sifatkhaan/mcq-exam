@@ -74,14 +74,18 @@ export class QuestionsController {
     @Query('difficulty')
     difficulty?: string,
   ) {
+    const parsedPage = Math.max(Number(page) || 1, 1);
+    const parsedPageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 100);
+    const trimmedSearch = search?.trim() || undefined;
+
     return this.service.findAll(
       req.user.organization_id,
       subjectId ? Number(subjectId) : undefined,
       chapterId ? Number(chapterId) : undefined,
       topicId ? Number(topicId) : undefined,
-      page ? Number(page) : 1,
-      pageSize ? Number(pageSize) : 20,
-      search,
+      parsedPage,
+      parsedPageSize,
+      trimmedSearch,
       difficulty,
     );
   }

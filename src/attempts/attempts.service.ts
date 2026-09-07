@@ -3344,6 +3344,7 @@ export class AttemptsService {
         now,
       })
       .orderBy('attempt.expires_at', 'ASC')
+      .take(50)
       .getMany();
 
     if (expiredAttempts.length === 0) {

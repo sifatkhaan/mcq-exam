@@ -189,6 +189,11 @@ export class QuestionsService {
     search?: string,
     difficulty?: string,
   ) {
+    const currentPage = Math.max(Number(page) || 1, 1);
+    const limit = Math.min(Math.max(Number(pageSize) || 10, 1), 100);
+    const offset = (currentPage - 1) * limit;
+    const trimmedSearch = search?.trim();
+
     const query = this.questionRepository
       .createQueryBuilder('q')
       .innerJoin(Subject, 's', 's.id = q.subject_id')
@@ -221,7 +226,7 @@ export class QuestionsService {
       query.andWhere('qv.difficulty = :difficulty', { difficulty });
     }
 
-    if (search) {
+    if (trimmedSearch) {
       query.andWhere(
         `
       (
@@ -232,7 +237,7 @@ export class QuestionsService {
       )
       `,
         {
-          search: `%${search}%`,
+          search: `%${trimmedSearch}%`,
         },
       );
     }
@@ -256,17 +261,17 @@ export class QuestionsService {
       ])
 
       .orderBy('q.created_at', 'DESC')
-      .skip((page - 1) * pageSize)
-      .take(pageSize)
+      .offset(offset)
+      .limit(limit)
       .getRawMany<QuestionListRow>();
 
     return {
       data: rows,
       pagination: {
-        page,
-        page_size: pageSize,
+        page: currentPage,
+        page_size: limit,
         total,
-        total_pages: Math.ceil(total / pageSize),
+        total_pages: Math.ceil(total / limit),
       },
     };
   }

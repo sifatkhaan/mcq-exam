@@ -2,9 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
+@Index('IX_exam_attempts_status_expires_at', ['status', 'expires_at'])
 @Entity('exam_attempts')
 export class ExamAttempt {
   @PrimaryGeneratedColumn()
