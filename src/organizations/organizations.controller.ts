@@ -82,6 +82,13 @@ export class OrganizationsController {
   ) {
     return this.service.getMembers(Number(id));
   }
+  @Get(':id/students')
+  students(
+    @Param('id')
+    id: number,
+  ) {
+    return this.service.getStudents(Number(id));
+  }
 
   @Delete('member/:id')
   removeMember(

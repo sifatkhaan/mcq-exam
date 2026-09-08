@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -51,6 +52,16 @@ export class ExamsController {
     status?: string,
   ) {
     return this.service.findAll(req.user.organization_id, status);
+  }
+  @Get(':id/available-students')
+  getAvailableStudents(
+    @Param('id', ParseIntPipe)
+    examId: number,
+
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    return this.service.getAvailableStudents(examId, req.user.organization_id);
   }
 
   @Get(':id')

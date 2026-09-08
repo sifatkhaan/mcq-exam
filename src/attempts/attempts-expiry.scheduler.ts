@@ -9,7 +9,7 @@ export class AttemptsExpiryScheduler {
 
   constructor(private readonly attemptsService: AttemptsService) {}
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async handleExpiredAttempts() {
     if (this.isProcessing) {
       this.logger.warn(

@@ -57,6 +57,11 @@ type ExamAssignmentRow = {
   student_username: string;
   student_email: string;
 };
+type AvailableStudentRow = {
+  id: number;
+  username: string;
+  email: string;
+};
 @Injectable()
 export class ExamsService {
   constructor(
@@ -445,6 +450,59 @@ export class ExamsService {
       message: 'Question removed from exam successfully',
     };
   }
+  async getAvailableStudents(examId: number, organizationId: number) {
+    // Verify that the exam belongs to the user's organization
+    const exam = await this.examRepository.findOne({
+      where: {
+        id: examId,
+        organization_id: organizationId,
+        is_deleted: false,
+      },
+    });
+
+    if (!exam) {
+      throw new NotFoundException('Exam not found');
+    }
+
+    // Get all active students of the organization
+    const students = await this.organizationMemberRepository
+      .createQueryBuilder('om')
+      .innerJoin(User, 'u', 'u.id = om.user_id')
+      .innerJoin(UserRole, 'ur', 'ur.user_id = u.id')
+      .innerJoin(Role, 'r', 'r.id = ur.role_id')
+      .where('om.organization_id = :organizationId', {
+        organizationId,
+      })
+      .andWhere('om.status = :memberStatus', {
+        memberStatus: 'ACTIVE',
+      })
+      .andWhere('u.status = :userStatus', {
+        userStatus: 'ACTIVE',
+      })
+      .andWhere('r.name = :roleName', {
+        roleName: 'STUDENT',
+      })
+      .select(['u.id AS id', 'u.username AS username', 'u.email AS email'])
+      .getRawMany<AvailableStudentRow>();
+
+    // Get students already assigned to this exam
+    const assignments = await this.examAssignmentRepository.find({
+      where: {
+        exam_id: examId,
+      },
+      select: ['student_id'],
+    });
+
+    const assignedStudentIds = new Set(
+      assignments.map((assignment) => assignment.student_id),
+    );
+
+    // Remove already assigned students
+    return students.filter(
+      (student) => !assignedStudentIds.has(Number(student.id)),
+    );
+  }
+
   async assignStudent(
     examId: number,
     dto: AssignExamDto,

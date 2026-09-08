@@ -80,6 +80,15 @@ export class OrganizationsService {
       },
     });
   }
+  async getStudents(organization_id: number) {
+    return await this.memberRepository.find({
+      where: {
+        organization_id,
+        status: 'ACTIVE',
+        role_id: 5,
+      },
+    });
+  }
 
   async removeMember(id: number) {
     await this.memberRepository.update(id, {

@@ -900,13 +900,10 @@ export class AttemptsService {
     if (!exam) {
       throw new NotFoundException('Exam not found');
     }
-
     const now = new Date();
-
     if (submissionType === 'MANUAL' && now > new Date(attempt.expires_at)) {
       submissionType = 'TIME_EXPIRED';
     }
-
     const examQuestions = await this.examQuestionRepository.find({
       where: {
         exam_id: attempt.exam_id,
@@ -3331,10 +3328,6 @@ export class AttemptsService {
   }
   async processExpiredAttempts() {
     const now = new Date();
-
-    // --------------------------------
-    // Find expired STARTED attempts
-    // --------------------------------
     const expiredAttempts = await this.examAttemptRepository
       .createQueryBuilder('attempt')
       .where('attempt.status = :status', {
