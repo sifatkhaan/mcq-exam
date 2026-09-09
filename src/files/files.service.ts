@@ -39,7 +39,6 @@ export class FilesService {
     const absoluteFilePath = join(uploadDirectory, storedFileName);
 
     await writeFile(absoluteFilePath, file.buffer);
-
     const relativeFilePath = `uploads/${storedFileName}`;
 
     const fileEntity = this.fileRepository.create({

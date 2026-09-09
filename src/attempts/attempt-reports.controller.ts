@@ -70,16 +70,13 @@ export class AttemptReportsController {
   getExamAnalytics(
     @Param('examId')
     examId: string,
-
     @Query('period')
     period: string,
-
     @Req()
     req: AuthenticatedRequest,
   ) {
     const selectedPeriod: 'weekly' | 'monthly' =
       period === 'monthly' ? 'monthly' : 'weekly';
-
     return this.attemptsService.getExamAnalytics(
       Number(examId),
       req.user.organization_id,

@@ -2319,10 +2319,6 @@ export class AttemptsService {
       fromDate.setHours(0, 0, 0, 0);
     }
 
-    // --------------------------------
-    // Validate exam belongs
-    // to current organization
-    // --------------------------------
     const exam = await this.examRepository.findOne({
       where: {
         id: examId,
@@ -2334,10 +2330,6 @@ export class AttemptsService {
     if (!exam) {
       throw new NotFoundException('Exam not found in this organization');
     }
-
-    // --------------------------------
-    // Assignment summary
-    // --------------------------------
     const assignments = await this.examAssignmentRepository
       .createQueryBuilder('assignment')
       .where('assignment.exam_id = :examId', {
@@ -2360,11 +2352,9 @@ export class AttemptsService {
     // --------------------------------
     const attempts = await this.examAttemptRepository
       .createQueryBuilder('attempt')
-
       .where('attempt.exam_id = :examId', {
         examId,
       })
-
       .andWhere(
         `
           attempt.status IN (:...statuses)
@@ -2376,28 +2366,18 @@ export class AttemptsService {
       .andWhere('attempt.submitted_at >= :fromDate', {
         fromDate,
       })
-
       .andWhere('attempt.submitted_at <= :now', {
         now,
       })
-
       .orderBy('attempt.submitted_at', 'ASC')
-
       .getMany();
 
     const totalAttempts = attempts.length;
-
-    // --------------------------------
-    // Unique participants
-    // --------------------------------
     const participantIds = new Set<number>();
-
     for (const attempt of attempts) {
       participantIds.add(Number(attempt.student_id));
     }
-
     const participants = participantIds.size;
-
     const nonParticipants = Math.max(assignedStudents - participants, 0);
 
     const participationRate =
@@ -2408,78 +2388,46 @@ export class AttemptsService {
     // --------------------------------
     let passed = 0;
     let failed = 0;
-
     let totalScore = 0;
     let totalPercentage = 0;
-
     let highestScore: number | null = null;
-
     let lowestScore: number | null = null;
-
     let highestPercentage: number | null = null;
-
     let lowestPercentage: number | null = null;
-
     for (const attempt of attempts) {
       const score = Number(attempt.final_score ?? 0);
-
       const percentage = Number(attempt.percentage ?? 0);
-
       totalScore += score;
-
       totalPercentage += percentage;
-
       if (attempt.pass_status === 'PASS') {
         passed++;
       }
-
       if (attempt.pass_status === 'FAIL') {
         failed++;
       }
-
       if (highestScore === null || score > highestScore) {
         highestScore = score;
       }
-
       if (lowestScore === null || score < lowestScore) {
         lowestScore = score;
       }
-
       if (highestPercentage === null || percentage > highestPercentage) {
         highestPercentage = percentage;
       }
-
       if (lowestPercentage === null || percentage < lowestPercentage) {
         lowestPercentage = percentage;
       }
     }
-
     const averageScore = totalAttempts > 0 ? totalScore / totalAttempts : 0;
-
     const averagePercentage =
       totalAttempts > 0 ? totalPercentage / totalAttempts : 0;
-
     const passRate = totalAttempts > 0 ? (passed / totalAttempts) * 100 : 0;
 
-    // --------------------------------
-    // Question-level analytics
-    //
-    // IMPORTANT:
-    // Base table = exam_questions
-    // LEFT JOIN attempt_answers
-    //
-    // So unanswered questions are
-    // also included.
-    // --------------------------------
     const questionRows = await this.examAttemptRepository
       .createQueryBuilder('attempt')
-
       .innerJoin('exam_questions', 'eq', 'eq.exam_id = attempt.exam_id')
-
       .innerJoin('question_versions', 'qv', 'qv.id = eq.question_version_id')
-
       .innerJoin('questions', 'q', 'q.id = qv.question_id')
-
       .leftJoin(
         'attempt_answers',
         'answer',
@@ -2488,11 +2436,9 @@ export class AttemptsService {
         AND answer.exam_question_id = eq.id
       `,
       )
-
       .where('attempt.exam_id = :examId', {
         examId,
       })
-
       .andWhere(
         `
         attempt.status IN (:...statuses)
@@ -2501,69 +2447,46 @@ export class AttemptsService {
           statuses: ['SUBMITTED', 'AUTO_SUBMITTED'],
         },
       )
-
       .andWhere('attempt.submitted_at >= :fromDate', {
         fromDate,
       })
-
       .andWhere('attempt.submitted_at <= :now', {
         now,
       })
-
       .select([
         'attempt.id AS attempt_id',
-
         'eq.id AS exam_question_id',
         'eq.question_order AS question_order',
         'eq.marks AS question_marks',
-
         'qv.question_text AS question_text',
-
         'answer.selected_option_id AS selected_option_id',
         'answer.is_correct AS is_correct',
         'answer.marks_awarded AS marks_awarded',
       ])
-
       .orderBy('eq.question_order', 'ASC')
-
       .getRawMany<ExamAnalyticsQuestionRow>();
-    // --------------------------------
-    // Aggregate question performance
-    // --------------------------------
-    const questionMap = new Map<number, ExamQuestionPerformanceAccumulator>();
 
+    const questionMap = new Map<number, ExamQuestionPerformanceAccumulator>();
     for (const row of questionRows) {
       const questionId = Number(row.exam_question_id);
-
       if (!questionMap.has(questionId)) {
         questionMap.set(questionId, {
           exam_question_id: questionId,
-
           question_order: Number(row.question_order),
-
           question_text: row.question_text,
-
           marks: Number(row.question_marks ?? 0),
-
           answered: 0,
-
           correct: 0,
-
           wrong: 0,
-
           unanswered: 0,
-
           total_marks_awarded: 0,
         });
       }
-
       const item = questionMap.get(questionId);
-
       if (!item) {
         continue;
       }
 
-      // No matching submitted attempt
       if (!row.attempt_id) {
         continue;
       }
@@ -2604,13 +2527,9 @@ export class AttemptsService {
 
       return {
         ...item,
-
         total_responses: totalResponses,
-
         accuracy_rate: Number(accuracyRate.toFixed(2)),
-
         answer_rate: Number(answerRate.toFixed(2)),
-
         total_marks_awarded: Number(item.total_marks_awarded.toFixed(2)),
       };
     });
@@ -2635,59 +2554,39 @@ export class AttemptsService {
     // --------------------------------
     return {
       period,
-
       from_date: fromDate,
-
       to_date: now,
-
       exam: {
         id: exam.id,
-
         title: exam.title,
-
         status: exam.status,
-
         total_marks: Number(exam.total_marks),
-
         pass_marks: Number(exam.pass_marks),
-
         max_attempts: exam.max_attempts,
       },
 
       participation: {
         assigned_students: assignedStudents,
-
         participants,
-
         non_participants: nonParticipants,
-
         participation_rate: Number(participationRate.toFixed(2)),
-
         total_attempts: totalAttempts,
       },
 
       result_summary: {
         passed,
-
         failed,
-
         pass_rate: Number(passRate.toFixed(2)),
-
         average_score: Number(averageScore.toFixed(2)),
-
         average_percentage: Number(averagePercentage.toFixed(2)),
-
         highest_score:
           highestScore === null ? null : Number(highestScore.toFixed(2)),
-
         lowest_score:
           lowestScore === null ? null : Number(lowestScore.toFixed(2)),
-
         highest_percentage:
           highestPercentage === null
             ? null
             : Number(highestPercentage.toFixed(2)),
-
         lowest_percentage:
           lowestPercentage === null
             ? null
@@ -2695,9 +2594,7 @@ export class AttemptsService {
       },
 
       question_performance: questionPerformance,
-
       most_difficult_questions: mostDifficultQuestions,
-
       easiest_questions: easiestQuestions,
     };
   }
@@ -2719,15 +2616,9 @@ export class AttemptsService {
     if (!exam) {
       throw new NotFoundException('Exam not found in this organization');
     }
-
-    // --------------------------------
-    // Load assignments + student info
-    // --------------------------------
     const assignments = await this.examAssignmentRepository
       .createQueryBuilder('assignment')
-
       .innerJoin('users', 'student', 'student.id = assignment.student_id')
-
       .where('assignment.exam_id = :examId', {
         examId,
       })
@@ -2747,7 +2638,6 @@ export class AttemptsService {
         'assignment.status AS assignment_status',
         'assignment.assigned_at AS assigned_at',
         'assignment.completed_at AS completed_at',
-
         'student.username AS student_name',
         'student.email AS student_email',
       ])
@@ -2781,21 +2671,14 @@ export class AttemptsService {
 
     const studentIds = assignments.map((item) => Number(item.student_id));
 
-    // --------------------------------
-    // Load all submitted attempts
-    // for this exam
-    // --------------------------------
     const attempts = await this.examAttemptRepository
       .createQueryBuilder('attempt')
-
       .where('attempt.exam_id = :examId', {
         examId,
       })
-
       .andWhere('attempt.student_id IN (:...studentIds)', {
         studentIds,
       })
-
       .andWhere(
         `
           attempt.status IN (:...statuses)
@@ -2804,11 +2687,8 @@ export class AttemptsService {
           statuses: ['SUBMITTED', 'AUTO_SUBMITTED'],
         },
       )
-
       .orderBy('attempt.student_id', 'ASC')
-
       .addOrderBy('attempt.attempt_no', 'ASC')
-
       .getMany();
 
     // --------------------------------
@@ -2818,7 +2698,6 @@ export class AttemptsService {
 
     for (const attempt of attempts) {
       const studentId = Number(attempt.student_id);
-
       if (!attemptMap.has(studentId)) {
         attemptMap.set(studentId, []);
       }
@@ -2831,7 +2710,6 @@ export class AttemptsService {
     // --------------------------------
     const students: ExamStudentResultRow[] = assignments.map((assignment) => {
       const studentId = Number(assignment.student_id);
-
       const studentAttempts = attemptMap.get(studentId) ?? [];
 
       // --------------------------------
@@ -2840,26 +2718,18 @@ export class AttemptsService {
       if (studentAttempts.length === 0) {
         return {
           assignment_id: Number(assignment.assignment_id),
-
           student_id: studentId,
-
           name: assignment.student_name,
-
           email: assignment.student_email,
-
           assignment_status: assignment.assignment_status,
-
           participation_status:
             assignment.assignment_status === 'CANCELLED'
               ? 'CANCELLED'
               : 'NOT_ATTEMPTED',
 
           total_attempts: 0,
-
           latest_attempt: null,
-
           best_attempt: null,
-
           final_status: 'NO_DATA',
         };
       }
@@ -2878,57 +2748,33 @@ export class AttemptsService {
         (a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0),
       )[0];
 
-      // --------------------------------
-      // Current final status
-      //
-      // For now we use best attempt.
-      // If any attempt passes,
-      // student is considered passed.
-      // --------------------------------
       const hasPassed = studentAttempts.some(
         (attempt) => attempt.pass_status === 'PASS',
       );
 
       return {
         assignment_id: Number(assignment.assignment_id),
-
         student_id: studentId,
-
         name: assignment.student_name,
-
         email: assignment.student_email,
-
         assignment_status: assignment.assignment_status,
-
         participation_status: 'PARTICIPATED',
-
         total_attempts: studentAttempts.length,
-
         latest_attempt: {
           attempt_id: latestAttempt.id,
-
           attempt_no: latestAttempt.attempt_no,
-
           submission_type: latestAttempt.submission_type,
-
           submitted_at: latestAttempt.submitted_at,
-
           final_score: Number(latestAttempt.final_score ?? 0),
-
           percentage: Number(latestAttempt.percentage ?? 0),
-
           result_status: latestAttempt.pass_status,
         },
 
         best_attempt: {
           attempt_id: bestAttempt.id,
-
           attempt_no: bestAttempt.attempt_no,
-
           final_score: Number(bestAttempt.final_score ?? 0),
-
           percentage: Number(bestAttempt.percentage ?? 0),
-
           result_status: bestAttempt.pass_status,
         },
 
@@ -2962,27 +2808,18 @@ export class AttemptsService {
     return {
       exam: {
         id: exam.id,
-
         title: exam.title,
-
         status: exam.status,
-
         total_marks: Number(exam.total_marks),
-
         pass_marks: Number(exam.pass_marks),
-
         max_attempts: exam.max_attempts,
       },
 
       summary: {
         assigned_students: activeAssignments.length,
-
         participated_students: participated,
-
         non_participants: nonParticipants,
-
         passed_students: passedStudents,
-
         failed_students: failedStudents,
       },
 

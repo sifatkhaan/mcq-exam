@@ -31,7 +31,6 @@ export class NotificationsService {
       status: 'UNREAD',
       read_at: null,
     });
-
     return this.notificationRepository.save(notification);
   }
 
@@ -42,7 +41,6 @@ export class NotificationsService {
         organization_id: organizationId,
         channel: 'IN_APP',
       },
-
       order: {
         created_at: 'DESC',
       },

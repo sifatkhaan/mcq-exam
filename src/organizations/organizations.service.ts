@@ -6,7 +6,14 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { OrganizationMember } from './entities/organization-member.entity';
 import { CreateMemberDto } from './dto/create-member.dto';
+import { User } from 'src/users/user.entity';
 
+type StudentRow = {
+  id: number;
+  username: string;
+  email: string;
+  phone: string;
+};
 @Injectable()
 export class OrganizationsService {
   constructor(
@@ -80,14 +87,30 @@ export class OrganizationsService {
       },
     });
   }
+
   async getStudents(organization_id: number) {
-    return await this.memberRepository.find({
-      where: {
+    return await this.memberRepository
+      .createQueryBuilder('om')
+      .innerJoin(User, 'u', 'u.id = om.user_id')
+      .where('om.organization_id = :organization_id', {
         organization_id,
-        status: 'ACTIVE',
-        role_id: 5,
-      },
-    });
+      })
+      .andWhere('om.status = :memberStatus', {
+        memberStatus: 'ACTIVE',
+      })
+      .andWhere('om.role_id = :roleId', {
+        roleId: 5,
+      })
+      .andWhere('u.status = :userStatus', {
+        userStatus: 'ACTIVE',
+      })
+      .select([
+        'u.id AS id',
+        'u.username AS name',
+        'u.email AS email',
+        'u.phone AS phone',
+      ])
+      .getRawMany<StudentRow>();
   }
 
   async removeMember(id: number) {

@@ -176,7 +176,6 @@ export class ExamsService {
   }
   async publish(id: number, userId: number, organizationId: number) {
     const exam = await this.findOne(id, organizationId);
-
     if (exam.status !== 'DRAFT') {
       throw new BadRequestException('Only draft exams can be published');
     }
@@ -451,7 +450,6 @@ export class ExamsService {
     };
   }
   async getAvailableStudents(examId: number, organizationId: number) {
-    // Verify that the exam belongs to the user's organization
     const exam = await this.examRepository.findOne({
       where: {
         id: examId,
@@ -463,8 +461,6 @@ export class ExamsService {
     if (!exam) {
       throw new NotFoundException('Exam not found');
     }
-
-    // Get all active students of the organization
     const students = await this.organizationMemberRepository
       .createQueryBuilder('om')
       .innerJoin(User, 'u', 'u.id = om.user_id')
