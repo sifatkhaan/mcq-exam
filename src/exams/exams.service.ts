@@ -126,6 +126,7 @@ export class ExamsService {
 
     return exam;
   }
+
   async update(
     id: number,
     dto: UpdateExamDto,
@@ -145,7 +146,7 @@ export class ExamsService {
 
     this.validateExamRules(mergedData);
 
-    await this.examRepository.update(id, {
+    Object.assign(exam, {
       ...dto,
       start_at:
         dto.start_at !== undefined ? new Date(dto.start_at) : exam.start_at,
@@ -154,8 +155,11 @@ export class ExamsService {
       updated_at: new Date(),
     });
 
+    exam.id = id;
+    await this.examRepository.save(exam);
     return this.findOne(id, organizationId);
   }
+
   async remove(id: number, userId: number, organizationId: number) {
     const exam = await this.findOne(id, organizationId);
     if (exam.status === 'PUBLISHED') {
@@ -174,22 +178,75 @@ export class ExamsService {
       message: 'Exam deleted successfully',
     };
   }
+  // async publish(id: number, userId: number, organizationId: number) {
+  //   const exam = await this.findOne(id, organizationId);
+  //   if (exam.status !== 'DRAFT') {
+  //     throw new BadRequestException('Only draft exams can be published');
+  //   }
+
+  //   this.validateExamRules(exam);
+  //   const examQuestions = await this.examQuestionRepository.find({
+  //     where: {
+  //       exam_id: id,
+  //     },
+  //   });
+  //   const calculatedMarks = examQuestions.reduce(
+  //     (total, question) => total + Number(question.marks),
+  //     0,
+  //   );
+  //   if (
+  //     Number(calculatedMarks.toFixed(2)) !==
+  //     Number(Number(exam.total_marks).toFixed(2))
+  //   ) {
+  //     throw new BadRequestException(
+  //       `Question marks total (${calculatedMarks}) does not match exam total marks (${exam.total_marks})`,
+  //     );
+  //   }
+
+  //   if (!exam.negative_marking_enabled) {
+  //     const hasNegativeMarks = examQuestions.some(
+  //       (question) => Number(question.negative_marks) > 0,
+  //     );
+
+  //     if (hasNegativeMarks) {
+  //       throw new BadRequestException(
+  //         'Negative marks exist in exam questions while negative marking is disabled',
+  //       );
+  //     }
+  //   }
+
+  //   await this.examRepository.update(id, {
+  //     status: 'PUBLISHED',
+  //     updated_by: userId,
+  //     updated_at: new Date(),
+  //   });
+
+  //   return {
+  //     message: 'Exam published successfully',
+  //     exam: await this.findOne(id, organizationId),
+  //     summary: {
+  //       total_questions: examQuestions.length,
+  //       calculated_marks: calculatedMarks,
+  //     },
+  //   };
+  // }
   async publish(id: number, userId: number, organizationId: number) {
     const exam = await this.findOne(id, organizationId);
     if (exam.status !== 'DRAFT') {
       throw new BadRequestException('Only draft exams can be published');
     }
-
     this.validateExamRules(exam);
     const examQuestions = await this.examQuestionRepository.find({
       where: {
         exam_id: id,
       },
     });
+
     const calculatedMarks = examQuestions.reduce(
       (total, question) => total + Number(question.marks),
       0,
     );
+
     if (
       Number(calculatedMarks.toFixed(2)) !==
       Number(Number(exam.total_marks).toFixed(2))
@@ -211,11 +268,12 @@ export class ExamsService {
       }
     }
 
-    await this.examRepository.update(id, {
-      status: 'PUBLISHED',
-      updated_by: userId,
-      updated_at: new Date(),
-    });
+    exam.id = id;
+    exam.status = 'PUBLISHED';
+    exam.updated_by = userId;
+    exam.updated_at = new Date();
+
+    await this.examRepository.save(exam);
 
     return {
       message: 'Exam published successfully',
@@ -226,44 +284,57 @@ export class ExamsService {
       },
     };
   }
+
   async close(id: number, userId: number, organizationId: number) {
     const exam = await this.findOne(id, organizationId);
-
     if (exam.status !== 'PUBLISHED') {
       throw new BadRequestException('Only published exams can be closed');
     }
+    exam.id = id;
+    exam.status = 'CLOSED';
+    exam.updated_by = userId;
+    exam.updated_at = new Date();
 
-    await this.examRepository.update(id, {
-      status: 'CLOSED',
-      updated_by: userId,
-      updated_at: new Date(),
-    });
+    await this.examRepository.save(exam);
+    // await this.examRepository.update(id, {
+    //   status: 'CLOSED',
+    //   updated_by: userId,
+    //   updated_at: new Date(),
+    // });
 
     return {
       message: 'Exam closed successfully',
     };
   }
+
   async closeExpiredExams() {
     const now = new Date();
-    const result = await this.examRepository
-      .createQueryBuilder()
-      .update()
-      .set({
-        status: 'CLOSED',
-        updated_at: now,
-      })
-      .where('status = :status', {
-        status: 'PUBLISHED',
-      })
-      .andWhere('end_at IS NOT NULL')
-      .andWhere('end_at <= :now', {
-        now,
-      })
-      .execute();
-
-    return {
-      closed_exams: result.affected ?? 0,
-    };
+    const queryRunner =
+      this.examRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    try {
+      queryRunner.data.skipAudit = true;
+      const result = await queryRunner.manager
+        .createQueryBuilder()
+        .update(Exam)
+        .set({
+          status: 'CLOSED',
+          updated_at: now,
+        })
+        .where('status = :status', {
+          status: 'PUBLISHED',
+        })
+        .andWhere('end_at IS NOT NULL')
+        .andWhere('end_at <= :now', {
+          now,
+        })
+        .execute();
+      return {
+        closed_exams: result.affected ?? 0,
+      };
+    } finally {
+      await queryRunner.release();
+    }
   }
   async archive(id: number, userId: number, organizationId: number) {
     const exam = await this.findOne(id, organizationId);
@@ -498,7 +569,6 @@ export class ExamsService {
       (student) => !assignedStudentIds.has(Number(student.id)),
     );
   }
-
   async assignStudent(
     examId: number,
     dto: AssignExamDto,

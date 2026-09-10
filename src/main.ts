@@ -1,13 +1,14 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-
+import { AuditContextInterceptor } from './audit-logs/audit-context.interceptor';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors({
     origin: ['http://localhost:3001', 'http://192.168.10.69:3001'],
     credentials: true,
   });
+  app.useGlobalInterceptors(app.get(AuditContextInterceptor));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
