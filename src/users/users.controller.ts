@@ -9,6 +9,8 @@ type AuthenticatedRequest = Request & {
     id: number;
     email: string;
     role: string;
+    organization_id: number | null;
+    organization_code: string | null;
   };
 };
 

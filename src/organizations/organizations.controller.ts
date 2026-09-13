@@ -21,8 +21,8 @@ import { Roles } from '../auth/decorators/roles.decorators';
 type AuthenticatedRequest = Request & {
   user: {
     id: number;
-    organization_id: number;
     role: string;
+    organization_id: number;
   };
 };
 

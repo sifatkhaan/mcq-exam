@@ -53,7 +53,6 @@ export class AuthService {
     });
 
     await this.userRoleService.assignRole(user.id, studentRole.id);
-
     await this.organizationService.addMember(
       {
         organization_id: organization.id,
@@ -90,14 +89,21 @@ export class AuthService {
 
     const userRole = await this.userRoleService.getUserRole(user.id);
 
-    const organizationMember =
-      await this.organizationService.getUserOrganization(user.id);
+    if (!userRole) {
+      throw new UnauthorizedException('User role not found');
+    }
+
+    if (userRole.name !== 'SUPER_ADMIN') {
+      throw new UnauthorizedException(
+        'Organization code is required for this account',
+      );
+    }
 
     const payload = {
       sub: user.id,
       email: user.email,
-      role: userRole?.name,
-      organization_id: organizationMember?.organization_id,
+      role: userRole.name,
+      organization_id: null,
     };
 
     const token = this.jwtService.sign(payload);
@@ -108,8 +114,8 @@ export class AuthService {
         id: user.id,
         name: user.username,
         email: user.email,
-        role: userRole?.name,
-        organization_id: organizationMember?.organization_id,
+        role: userRole.name,
+        organization_id: null,
       },
     };
   }
@@ -121,6 +127,8 @@ export class AuthService {
   ) {
     const organization =
       await this.organizationService.findByCode(organizationCode);
+
+    console.log(organization, 'orga');
 
     if (!organization) {
       throw new UnauthorizedException('Invalid organization');
@@ -161,11 +169,16 @@ export class AuthService {
       );
     }
 
+    if (userRole.name === 'SUPER_ADMIN') {
+      throw new UnauthorizedException('Super Admin must use the main login');
+    }
+
     const payload = {
       sub: user.id,
       email: user.email,
       role: userRole.name,
       organization_id: organization.id,
+      organization_code: organization.code,
     };
 
     const token = this.jwtService.sign(payload);
@@ -178,6 +191,7 @@ export class AuthService {
         email: user.email,
         role: userRole.name,
         organization_id: organization.id,
+        organization_code: organization.code,
       },
     };
   }

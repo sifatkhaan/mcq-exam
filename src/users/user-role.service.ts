@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserRole } from './user-role.entity';
+import { Role } from '../roles/role.entity';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity';
 
 @Injectable()
@@ -29,36 +30,40 @@ export class UserRoleService {
   }
 
   async getUserRole(user_id: number, organization_id?: number) {
-    if (organization_id !== undefined) {
-      const result = await this.repository
-        .createQueryBuilder('ur')
-        .innerJoinAndSelect('ur.role', 'role')
-        .innerJoin(
-          OrganizationMember,
-          'om',
-          'om.user_id = ur.user_id AND om.role_id = ur.role_id',
-        )
-        .where('ur.user_id = :user_id', {
+    if (organization_id === undefined) {
+      const result = await this.repository.findOne({
+        where: {
           user_id,
-        })
-        .andWhere('om.organization_id = :organization_id', {
-          organization_id,
-        })
-        .andWhere('om.status = :status', {
-          status: 'ACTIVE',
-        })
-        .getOne();
+        },
+        relations: ['role'],
+      });
 
       return result?.role;
     }
 
-    const result = await this.repository.findOne({
-      where: {
-        user_id,
-      },
-      relations: ['role'],
-    });
+    const result = await this.repository
+      .createQueryBuilder('ur')
+      .innerJoin(
+        OrganizationMember,
+        'om',
+        'om.user_id = ur.user_id AND om.role_id = ur.role_id',
+      )
+      .innerJoin(Role, 'r', 'r.id = ur.role_id')
+      .where('ur.user_id = :userId', {
+        userId: user_id,
+      })
+      .andWhere('om.organization_id = :organizationId', {
+        organizationId: organization_id,
+      })
+      .andWhere('om.status = :memberStatus', {
+        memberStatus: 'ACTIVE',
+      })
+      .andWhere('r.name != :superAdminRole', {
+        superAdminRole: 'SUPER_ADMIN',
+      })
+      .select(['r.id AS id', 'r.name AS name'])
+      .getRawOne<{ id: number; name: string }>();
 
-    return result?.role;
+    return result ?? null;
   }
 }
