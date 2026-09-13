@@ -21,26 +21,47 @@ export class AuthService {
     private readonly userRoleService: UserRoleService,
     private readonly organizationService: OrganizationsService,
   ) {}
-  async register(dto: RegisterDto) {
+
+  async register(dto: RegisterDto, organizationCode: string) {
+    const organization =
+      await this.organizationService.findByCode(organizationCode);
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
     const existingUser = await this.userService.findByEmail(dto.email);
+
     if (existingUser) {
       throw new ConflictException('Email already exists');
     }
+
+    const studentRole = await this.rolesService.findByCode('STUDENT');
+
+    if (!studentRole) {
+      throw new NotFoundException('Student role not found');
+    }
+
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
     const user = await this.userService.create({
       username: dto.name,
       email: dto.email,
-      phone: dto.phone,
+      phone: dto.phone ?? null,
       password_hash: hashedPassword,
       status: 'ACTIVE',
     });
-    const role = await this.rolesService.findByCode('SUPER_ADMIN');
-    if (!role) {
-      throw new NotFoundException('Default user role not found');
-    }
 
-    await this.userRoleService.assignRole(user.id, role.id);
+    await this.userRoleService.assignRole(user.id, studentRole.id);
+
+    await this.organizationService.addMember(
+      {
+        organization_id: organization.id,
+        user_id: user.id,
+        role_id: studentRole.id,
+      },
+      user.id,
+    );
 
     return {
       message: 'User Registered Successfully',
@@ -48,21 +69,27 @@ export class AuthService {
         id: user.id,
         name: user.username,
         email: user.email,
+        organization_id: organization.id,
+        role: studentRole.name,
       },
     };
   }
 
   async login(email: string, password: string) {
     const user = await this.userService.findByEmail(email);
-    if (!user) {
+
+    if (!user || user.status !== 'ACTIVE') {
       throw new UnauthorizedException('Invalid credentials');
     }
+
     const match = await bcrypt.compare(password, user.password_hash);
+
     if (!match) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const userRole = await this.userRoleService.getUserRole(user.id);
+
     const organizationMember =
       await this.organizationService.getUserOrganization(user.id);
 
@@ -72,13 +99,85 @@ export class AuthService {
       role: userRole?.name,
       organization_id: organizationMember?.organization_id,
     };
+
     const token = this.jwtService.sign(payload);
+
     return {
       accessToken: token,
       user: {
         id: user.id,
         name: user.username,
         email: user.email,
+        role: userRole?.name,
+        organization_id: organizationMember?.organization_id,
+      },
+    };
+  }
+
+  async loginByOrganization(
+    email: string,
+    password: string,
+    organizationCode: string,
+  ) {
+    const organization =
+      await this.organizationService.findByCode(organizationCode);
+
+    if (!organization) {
+      throw new UnauthorizedException('Invalid organization');
+    }
+
+    const user = await this.userService.findByEmail(email);
+
+    if (!user || user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const match = await bcrypt.compare(password, user.password_hash);
+
+    if (!match) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const organizationMember =
+      await this.organizationService.getUserOrganization(
+        user.id,
+        organization.id,
+      );
+
+    if (!organizationMember) {
+      throw new UnauthorizedException(
+        'User does not belong to this organization',
+      );
+    }
+
+    const userRole = await this.userRoleService.getUserRole(
+      user.id,
+      organization.id,
+    );
+
+    if (!userRole) {
+      throw new UnauthorizedException(
+        'User role not found for this organization',
+      );
+    }
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: userRole.name,
+      organization_id: organization.id,
+    };
+
+    const token = this.jwtService.sign(payload);
+
+    return {
+      accessToken: token,
+      user: {
+        id: user.id,
+        name: user.username,
+        email: user.email,
+        role: userRole.name,
+        organization_id: organization.id,
       },
     };
   }
